@@ -87,7 +87,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               min="0.01"
               max="1.0"
               value={hoseConfig.frictionPer100m}
-              onChange={(e) => updateHoseConfig({ frictionPer100m: parseFloat(e.target.value) || 0.1 })}
+              onChange={(e) => updateHoseConfig({ frictionPer100m: parseFloat(e.target.value) || 1.0 })}
               className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white"
             />
           </div>

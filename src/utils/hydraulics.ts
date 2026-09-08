@@ -14,6 +14,7 @@ export function calculateWaterRelay(
       totalBProvisions: 0,
       frictionLossTotal: 0,
       elevationDeltaTotal: 0,
+      netPressureLoss: 0,
       pumpStations: [],
       segmentDetails: [],
       profileSamples: [],
@@ -108,6 +109,7 @@ export function calculateWaterRelay(
     totalBProvisions,
     frictionLossTotal: Number(totalFrictionLoss.toFixed(2)),
     elevationDeltaTotal: Number(totalElevationDelta.toFixed(1)),
+    netPressureLoss: Number((totalFrictionLoss + totalElevationDelta / 10).toFixed(2)),
     pumpStations,
     segmentDetails,
     profileSamples,
@@ -122,7 +124,14 @@ function buildProfileSamples(waypoints: Waypoint[]) {
     const start = waypoints[index];
     const end = waypoints[index + 1];
     const distance = end.routeDistance ?? calculateDistance(start.lat, start.lng, end.lat, end.lng);
-    const routeSamples = end.routeSamples;
+    const validRouteSamples = end.routeSamples?.filter((sample) =>
+      Number.isFinite(sample.distance) && Number.isFinite(sample.elevation) && sample.distance >= 0 && sample.distance <= distance,
+    );
+    const routeSamples = validRouteSamples?.length &&
+      validRouteSamples[0].distance === 0 &&
+      validRouteSamples[validRouteSamples.length - 1].distance === distance
+      ? validRouteSamples
+      : undefined;
 
     if (routeSamples?.length) {
       for (const sample of routeSamples) {

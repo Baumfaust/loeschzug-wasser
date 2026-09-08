@@ -86,8 +86,12 @@ export const ResultsPanel: React.FC<ResultsPanelProps> = ({ result }) => {
 
       <div className="space-y-1.5 text-xs pt-1 border-t border-slate-800">
         <div className="flex justify-between text-slate-300">
-          <span>Gesamter Reibungsverlust:</span>
+          <span>Reibungsverlust:</span>
           <span className="font-mono text-amber-300">{result.frictionLossTotal} bar</span>
+        </div>
+        <div className="flex justify-between text-slate-300">
+          <span>Netto-Druckverlust:</span>
+          <span className="font-mono text-rose-300">{result.netPressureLoss} bar</span>
         </div>
         <div className="flex justify-between text-slate-300">
           <span>Höhendifferenz (Δh):</span>

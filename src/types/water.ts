@@ -27,7 +27,7 @@ export interface Waypoint {
 
 export interface HoseConfig {
   lengthPerHose: number; // default 20m for B-hose
-  frictionPer100m: number; // default 0.1 bar per 100m at 800 l/min
+  frictionPer100m: number; // default 1.0 bar per 100m at 800 l/min
   layingFactor: number; // default 1.1 (+10%)
 }
 
@@ -51,8 +51,9 @@ export interface CalculationResult {
   mapDistance: number; // meters
   effectiveDistance: number; // meters
   totalBProvisions: number; // total number of B-hoses rounded up
-  frictionLossTotal: number; // bar
-  elevationDeltaTotal: number; // meters
+  frictionLossTotal: number; // friction loss only, in bar
+  elevationDeltaTotal: number; // start-to-end elevation difference, in meters
+  netPressureLoss: number; // friction loss plus elevation effect, in bar
   pumpStations: PumpStation[];
   segmentDetails: {
     distance: number;
