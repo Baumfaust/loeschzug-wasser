@@ -27,7 +27,7 @@ interface WaterStore {
 
 const defaultHoseConfig: HoseConfig = {
   lengthPerHose: 20,
-  frictionPer100m: 0.1,
+  frictionPer100m: 1.0,
   layingFactor: 1.1, // +10%
 };
 

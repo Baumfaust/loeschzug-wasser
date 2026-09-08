@@ -20,7 +20,7 @@ A client-side web application designed to calculate water transport over long di
 
 ### 3.2 Hose Calculation (Focus on B-Hoses)
 * **Standard Hose Logic:** Calculations default to standard B-Hoses (20 meters length per piece).
-* **Friction Loss:** Configurable internal resistance (Default: 0.1 bar per 100m for B-Hose at 800 l/min).
+* **Friction Loss:** Configurable internal resistance (Default: 1.0 bar per 100m for B-Hose at 800 l/min).
 * **Laying Factor (Real-World Offset):** A configurable multiplier to account for bights, curves, and terrain adaptation.
     * *Default:* +10% (Factor 1.1).
     * *Calculation:* `Effective Distance = Map Distance * Laying Factor`.
