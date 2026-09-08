@@ -11,10 +11,16 @@ export interface ShareState {
   showHydrants: boolean;
 }
 
-export function createShareUrl(state: ShareState): string {
+export function createShareUrl(state: ShareState, compact = false): string {
   const url = new URL(window.location.href);
   url.search = '';
-  url.searchParams.set(SHARE_PARAM, compressToEncodedURIComponent(JSON.stringify(state)));
+  const shareState = compact
+    ? {
+        ...state,
+        waypoints: state.waypoints.map(({ routeDistance: _routeDistance, routePath: _routePath, routeSamples: _routeSamples, ...waypoint }) => waypoint),
+      }
+    : state;
+  url.searchParams.set(SHARE_PARAM, compressToEncodedURIComponent(JSON.stringify(shareState)));
   return url.toString();
 }
 

@@ -11,6 +11,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const [qrCode, setQrCode] = React.useState<string | null>(null);
+  const [qrError, setQrError] = React.useState<string | null>(null);
   const [copyState, setCopyState] = React.useState<'idle' | 'copied'>('idle');
   const {
     hoseConfig,
@@ -32,7 +33,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     setCopyState('copied');
     window.setTimeout(() => setCopyState('idle'), 1800);
   };
-  const showQrCode = async () => setQrCode(await QRCode.toDataURL(getShareUrl(), { width: 280, margin: 2 }));
+  const showQrCode = async () => {
+    setQrError(null);
+    try {
+      const compactShareUrl = createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants }, true);
+      setQrCode(await QRCode.toDataURL(compactShareUrl, {
+        width: 280,
+        margin: 2,
+        errorCorrectionLevel: 'L',
+      }));
+    } catch {
+      setQrCode(null);
+      setQrError('Der QR-Code konnte nicht erstellt werden. Bitte kopieren Sie stattdessen den Link.');
+    }
+  };
 
   return (
     <>
@@ -199,6 +213,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <button type="button" onClick={copyShareUrl} className="rounded border border-slate-700 bg-slate-800 px-2 py-2 text-[11px] text-white hover:bg-slate-700">{copyState === 'copied' ? '✓ Kopiert' : '🔗 Link kopieren'}</button>
             <button type="button" onClick={showQrCode} className="rounded border border-cyan-800 bg-cyan-950 px-2 py-2 text-[11px] text-cyan-200 hover:bg-cyan-900">▦ QR-Code</button>
           </div>
+          {qrError && <div className="text-center text-[10px] text-rose-300">{qrError}</div>}
           <div className="text-center text-[10px] text-slate-500">Alle Eingaben werden im Link gespeichert.</div>
         </div>
         <div className="space-y-1 bg-slate-950 p-2 text-center text-[10px] text-slate-400">
