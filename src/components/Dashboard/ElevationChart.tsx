@@ -16,7 +16,8 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
         { distance: index === 0 ? 0 : result.segmentDetails[index - 1].accumulatedDistance, elevation: segment.elevationStart },
         { distance: segment.accumulatedDistance, elevation: segment.elevationEnd },
       ]);
-  const elevations = profileSamples.map((sample) => sample.elevation);
+  const chartSamples = smoothProfile(profileSamples);
+  const elevations = chartSamples.map((sample) => sample.elevation);
   const actualMin = Math.min(...elevations);
   const actualMax = Math.max(...elevations);
   const actualRange = actualMax - actualMin;
@@ -31,8 +32,8 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
   const padding = { top: 22, right: 20, bottom: 30, left: 42 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
-  const points = profileSamples.slice(1).map((sample, index) => {
-    const previous = profileSamples[index];
+  const points = chartSamples.slice(1).map((sample, index) => {
+    const previous = chartSamples[index];
     const x1 = padding.left + (previous.distance / totalDist) * chartWidth;
     const x2 = padding.left + (sample.distance / totalDist) * chartWidth;
     const y1 = padding.top + (1 - (previous.elevation - minElev) / elevRange) * chartHeight;
@@ -43,11 +44,11 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
     ? null
     : points.findIndex((point) => hoveredDistance <= point.startDistance + point.distance);
   const hoveredPoint = hoveredIndex === null || hoveredIndex < 0 ? null : points[hoveredIndex];
-  const profilePath = `M ${points[0].x1} ${points[0].y1} ${points.map((point) => `L ${point.x2} ${point.y2}`).join(' ')}`;
+  const profilePath = createSmoothPath([{ x: points[0].x1, y: points[0].y1 }, ...points.map((point) => ({ x: point.x2, y: point.y2 }))]);
   const areaPath = `${profilePath} L ${points[points.length - 1].x2} ${height - padding.bottom} L ${points[0].x1} ${height - padding.bottom} Z`;
 
   return (
-    <div className="absolute bottom-4 left-96 right-4 ml-6 bg-slate-900/95 backdrop-blur-md text-slate-100 p-3 rounded-xl shadow-2xl border border-slate-700/80 z-[1000]">
+    <div className="absolute bottom-2 left-2 right-2 z-[1000] ml-0 rounded-xl border border-slate-700/80 bg-slate-900/95 p-2 text-slate-100 shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-96 sm:right-4 sm:ml-6 sm:p-3">
       <div className="flex items-center justify-between mb-2">
         <h4 className="text-xs font-bold text-cyan-400 flex items-center space-x-1.5">
           <span>📈</span><span>Höhenprofil & Streckenverlauf</span>
@@ -70,10 +71,8 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
             </linearGradient>
           </defs>
           <path d={areaPath} fill="url(#elevationGradient)" />
-          {points.map((point) => (
-            <line key={`profile-${point.index}`} x1={point.x1} y1={point.y1} x2={point.x2} y2={point.y2}
-              stroke={hoveredIndex === point.index ? '#facc15' : '#38bdf8'} strokeWidth={hoveredIndex === point.index ? 5 : 2.5} />
-          ))}
+          <path d={profilePath} fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {hoveredPoint && <line x1={hoveredPoint.x1} y1={hoveredPoint.y1} x2={hoveredPoint.x2} y2={hoveredPoint.y2} stroke="#facc15" strokeWidth="5" strokeLinecap="round" />}
           {result.pumpStations.map((pump) => {
             const pumpX = padding.left + (pump.distance / totalDist) * chartWidth;
             const pumpY = padding.top + (1 - (pump.elevation - minElev) / elevRange) * chartHeight;
@@ -88,3 +87,34 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
     </div>
   );
 };
+
+
+function smoothProfile(samples: { distance: number; elevation: number }[]) {
+  if (samples.length < 3) return samples;
+  return samples.map((sample, index) => {
+    const start = Math.max(0, index - 2);
+    const end = Math.min(samples.length - 1, index + 2);
+    const window = samples.slice(start, end + 1);
+    return {
+      distance: sample.distance,
+      elevation: window.reduce((sum, point) => sum + point.elevation, 0) / window.length,
+    };
+  });
+}
+
+function createSmoothPath(points: { x: number; y: number }[]) {
+  if (points.length === 0) return '';
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+
+  let path = `M ${points[0].x} ${points[0].y}`;
+  for (let index = 1; index < points.length - 1; index++) {
+    const midpoint = {
+      x: (points[index].x + points[index + 1].x) / 2,
+      y: (points[index].y + points[index + 1].y) / 2,
+    };
+    path += ` Q ${points[index].x} ${points[index].y} ${midpoint.x} ${midpoint.y}`;
+  }
+  const last = points[points.length - 1];
+  path += ` Q ${last.x} ${last.y} ${last.x} ${last.y}`;
+  return path;
+}

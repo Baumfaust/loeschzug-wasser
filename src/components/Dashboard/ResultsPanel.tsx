@@ -7,7 +7,7 @@ interface ResultsPanelProps {
 
 export const ResultsPanel: React.FC<ResultsPanelProps> = ({ result }) => {
   return (
-    <div className="absolute top-4 right-4 bg-slate-900/95 backdrop-blur-md text-slate-100 p-4 rounded-xl shadow-2xl border border-slate-700/80 z-[1000] w-80 space-y-4">
+    <div className="absolute left-3 right-3 top-16 z-[1000] max-h-[42vh] w-auto space-y-3 overflow-y-auto rounded-xl border border-slate-700/80 bg-slate-900/95 p-3 text-slate-100 shadow-2xl backdrop-blur-md sm:left-auto sm:right-4 sm:top-4 sm:max-h-none sm:w-80 sm:space-y-4 sm:p-4">
       <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
         <h3 className="font-bold text-sm text-cyan-400 flex items-center space-x-2">
           <span>📊</span>

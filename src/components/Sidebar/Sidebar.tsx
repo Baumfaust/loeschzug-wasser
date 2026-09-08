@@ -2,7 +2,12 @@ import React from 'react';
 import { useWaterStore } from '../../store/useWaterStore';
 import { type PumpProfileType } from '../../types/water';
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const {
     hoseConfig,
     pumpConfig,
@@ -18,14 +23,19 @@ export const Sidebar: React.FC = () => {
   } = useWaterStore();
 
   return (
-    <aside className="w-80 bg-slate-900 text-slate-100 flex flex-col h-full shadow-xl z-10 overflow-y-auto border-r border-slate-800 text-xs">
-      <div className="p-3 border-b border-slate-800 bg-slate-950/50 flex items-center space-x-2">
-        <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold">💧</div>
-        <div>
-          <h1 className="font-bold text-sm text-white">WasserFörderung</h1>
-          <p className="text-[10px] text-slate-400">Lange Wegstrecken</p>
+    <>
+      {isOpen && <button type="button" onClick={onClose} className="fixed inset-0 z-[1190] bg-slate-950/60 md:hidden" aria-label="Menü schließen" />}
+      <aside className={`fixed inset-y-0 left-0 z-[1200] flex w-[min(20rem,calc(100vw-2rem))] flex-col overflow-y-auto border-r border-slate-800 bg-slate-900 text-xs text-slate-100 shadow-xl transition-transform duration-200 md:static md:z-10 md:w-80 md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex items-center justify-between border-b border-slate-800 bg-slate-950/50 p-3">
+          <div className="flex items-center space-x-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-600 font-bold text-white">💧</div>
+            <div>
+              <h1 className="font-bold text-sm text-white">WasserFörderung</h1>
+              <p className="text-[10px] text-slate-400">Lange Wegstrecken</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 text-lg text-slate-400 hover:bg-slate-800 hover:text-white md:hidden" aria-label="Menü schließen">×</button>
         </div>
-      </div>
 
       <div className="p-3 space-y-3 flex-1">
         {/* Hose Configuration */}
@@ -171,9 +181,10 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      <div className="p-2 bg-slate-950 border-t border-slate-800 text-[10px] text-slate-400 text-center">
-        Feuerwehr Wasserförderung v1.0
-      </div>
-    </aside>
+        <div className="border-t border-slate-800 bg-slate-950 p-2 text-center text-[10px] text-slate-400">
+          Feuerwehr Wasserförderung v1.0
+        </div>
+      </aside>
+    </>
   );
 };
