@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, Popup, CircleMarker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Popup, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useWaterStore } from '../../store/useWaterStore';
@@ -91,6 +91,27 @@ const DebugLocationInitializer: React.FC = () => {
   return null;
 };
 
+const WaypointViewController: React.FC<{ waypoints: { lat: number; lng: number }[] }> = ({ waypoints }) => {
+  const map = useMap();
+  const waypointKey = waypoints.map((waypoint) => `${waypoint.lat},${waypoint.lng}`).join('|');
+
+  React.useEffect(() => {
+    if (waypoints.length === 0) return;
+
+    if (waypoints.length === 1) {
+      map.setView([waypoints[0].lat, waypoints[0].lng], 13);
+      return;
+    }
+
+    map.fitBounds(
+      waypoints.map((waypoint) => [waypoint.lat, waypoint.lng] as [number, number]),
+      { padding: [40, 40], maxZoom: 15 },
+    );
+  }, [map, waypointKey, waypoints]);
+
+  return null;
+};
+
 export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHoverDistance }) => {
   const { waypoints, addWaypoint, updateWaypointElevation, updateWaypointRoute, removeWaypoint, followRoads, showHydrants } = useWaterStore();
   const [hydrants, setHydrants] = React.useState<Hydrant[]>([]);
@@ -160,6 +181,7 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
       <MapContainer center={center} zoom={waypoints.length > 0 ? 13 : 6} style={{ width: '100%', height: '100%' }} className="z-0">
         <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <DebugLocationInitializer />
+        <WaypointViewController waypoints={waypoints} />
         <MapClickHandler onMapClick={handleMapClick} />
 
         {waypoints.slice(1).map((waypoint, index) => {
