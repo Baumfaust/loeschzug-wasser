@@ -11,23 +11,18 @@ export interface ShareState {
   showHydrants: boolean;
 }
 
-export function createShareUrl(state: ShareState, compact = false): string {
-  const url = new URL(window.location.href);
-  url.search = '';
+export function createSharePayload(state: ShareState, compact = false): string {
+  // QR codes omit dense elevation samples, but must retain the routed geometry.
   const shareState = compact
     ? {
         ...state,
-        waypoints: state.waypoints.map(({ routeDistance: _routeDistance, routePath: _routePath, routeSamples: _routeSamples, ...waypoint }) => waypoint),
+        waypoints: state.waypoints.map(({ routeSamples: _routeSamples, ...waypoint }) => waypoint),
       }
     : state;
-  url.searchParams.set(SHARE_PARAM, compressToEncodedURIComponent(JSON.stringify(shareState)));
-  return url.toString();
+  return compressToEncodedURIComponent(JSON.stringify(shareState));
 }
 
-export function readShareState(): ShareState | null {
-  const encoded = new URLSearchParams(window.location.search).get(SHARE_PARAM);
-  if (!encoded) return null;
-
+export function parseSharePayload(encoded: string): ShareState | null {
   try {
     const json = decompressFromEncodedURIComponent(encoded);
     if (!json) return null;
@@ -43,4 +38,16 @@ export function readShareState(): ShareState | null {
   } catch {
     return null;
   }
+}
+
+export function createShareUrl(state: ShareState, compact = false): string {
+  const url = new URL(window.location.href);
+  url.search = '';
+  url.searchParams.set(SHARE_PARAM, createSharePayload(state, compact));
+  return url.toString();
+}
+
+export function readShareState(): ShareState | null {
+  const encoded = new URLSearchParams(window.location.search).get(SHARE_PARAM);
+  return encoded ? parseSharePayload(encoded) : null;
 }
