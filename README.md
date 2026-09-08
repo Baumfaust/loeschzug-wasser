@@ -1,6 +1,16 @@
-# Loeschzug Wasser
+# Löschzug Wasser
 
-Ein Desktop-Webtool zur Berechnung von Wasserförderung über lange Wegstrecken mit interaktiver Karte, Höhenprofil und Pumpenlogik für Einsatzsituationen im Feuerwehr- und Hilfsdienstbereich.
+**Löschzug Wasser** unterstützt bei der Planung von Wasserförderung über lange Wegstrecken. Auf einer Karte werden Strecke und Wegpunkte festgelegt. Daraus berechnet die Anwendung Schlauchbedarf, Höhenprofil, Druckverluste und mögliche Relaispumpen.
+
+Die Anwendung funktioniert auf Desktop, Tablet und Smartphone. Eine Planung kann über einen Link oder QR-Code mit anderen Einsatzkräften geteilt werden.
+
+## Anwendung öffnen
+
+Die aktuelle Version ist online verfügbar:
+
+**https://baumfaust.github.io/loeschzug-wasser/**
+
+Für die Nutzung werden eine Internetverbindung und ein moderner Browser benötigt.
 
 <div align="center">
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react" alt="React 19" />
@@ -10,147 +20,93 @@ Ein Desktop-Webtool zur Berechnung von Wasserförderung über lange Wegstrecken 
   <img src="https://img.shields.io/badge/Zustand-5-000000?style=for-the-badge&logo=zustand" alt="Zustand" />
 </div>
 
-## Überblick
+## Eine Strecke planen
 
-Das Projekt ist eine clientseitige Webanwendung, mit der Strecken für die Wasserförderung über längere Distanzen modelliert und berechnet werden können. Dabei werden Wegpunkte auf einer Karte gesetzt, Höhenwerte über eine API abgerufen und anschließend die benötigten B-Schläuche sowie mögliche Zwischenpumpen automatisch ermittelt.
+1. **Startpunkt setzen:** Auf die Karte tippen oder klicken.
+2. **Zwischenpunkte setzen:** Bei längeren oder kurvigen Strecken zusätzliche Punkte einfügen.
+3. **Zielpunkt setzen:** Der letzte Wegpunkt ist das Ziel.
+4. **Routenführung auswählen:** Mit „Straßen folgen“ wird die Strecke entlang des Straßennetzes geführt. Ist die Option deaktiviert, wird die direkte Verbindung verwendet.
+5. **Ergebnisse prüfen:** Die Anwendung zeigt Entfernung, effektive Schlauchstrecke, Höhenprofil, Druckverluste und Pumpenbedarf.
 
-Die Anwendung ist bewusst als Desktop-UI aufgebaut und fokussiert sich auf eine klare, schnelle Arbeitsfläche mit Karte, Konfigurationsbereich und Ergebnisübersicht.
+Die Wegpunkte können über die Kartenmarker bearbeitet oder gelöscht werden. Mit „Löschen“ wird die gesamte aktuelle Strecke entfernt.
 
-## Kernfunktionen
+## Berechnungsergebnisse
 
-- Interaktive Karte mit OpenStreetMap-Kacheln
-- Platzierung von Start-, Zwischen- und Zielpunkten direkt auf der Karte
-- automatische Höhenabfrage für einzelne Wegpunkte
-- Berechnung der effektiven Strecke mit Laying-Faktor
-- Bestimmung der benötigten B-Schläuche (20 m pro Stück)
-- Simulation von Relaispumpen anhand von Druckverlusten und Höhenunterschieden
-- Ergebnisanzeige mit Gesamtdistanz, Pumpenbedarf und Segmentübersicht
-- einfache Anpassung der Schlauch- und Pumpenparameter
+Die Berechnung berücksichtigt:
 
-## Tech Stack
+- die tatsächliche Karten- bzw. Straßenentfernung,
+- den eingestellten Wegreservefaktor,
+- Reibungsverluste in der Schlauchleitung,
+- Druckänderungen durch Steigungen und Gefälle,
+- das gewählte Pumpenprofil und den Mindestdruck.
 
-- React + TypeScript
-- Vite
-- Leaflet + react-leaflet
-- Tailwind CSS
-- Zustand
-- Open-Elevation API
-- PWA-Support via vite-plugin-pwa
+Steigungen verursachen einen zusätzlichen Druckverlust. Gefälle wirken sich umgekehrt als Druckgewinn aus. Auf dieser Grundlage werden Relaispumpen vorgeschlagen, wenn der verfügbare Druck unter den Mindestwert fällt.
 
-## Projektstruktur
+Das Höhenprofil basiert auf Geländeproben entlang der Strecke und nicht nur auf den gesetzten Wegpunkten. Die Darstellung wird geglättet, damit der Verlauf besser lesbar ist.
 
-```text
-src/
-├── components/
-│   ├── Dashboard/
-│   │   ├── ElevationChart.tsx
-│   │   └── ResultsPanel.tsx
-│   ├── Map/
-│   │   └── MapView.tsx
-│   └── Sidebar/
-│       └── Sidebar.tsx
-├── store/
-│   └── useWaterStore.ts
-├── types/
-│   └── water.ts
-├── utils/
-│   ├── elevation.ts
-│   └── hydraulics.ts
-├── App.tsx
-├── index.css
-└── main.tsx
-```
+## Einstellungen
 
-## So funktioniert die Berechnung
+Im Menü können folgende Werte angepasst werden:
 
-Die Anwendung berücksichtigt drei zentrale Faktoren:
+- **Reibungsverlust pro 100 m:** Reibungswert der Schlauchleitung.
+- **Wegreserve:** Zuschlag für die reale Verlegung der Schläuche.
+- **Pumpen-Profil:** PFPN 10-1000, TS 8/8 oder ein eigenes Profil.
+- **Maximaler Pumpendruck:** Ausgangsdruck der Pumpe bei einem eigenen Profil.
+- **Mindestdruck am Pumpeneingang:** Druckgrenze für die Pumpenplatzierung.
+- **Straßen folgen:** Routenberechnung entlang vorhandener Straßen.
+- **Hydranten anzeigen:** Zeigt bekannte OpenStreetMap-Hydranten im Umfeld der Wegpunkte an.
 
-1. Laufweg der Wasserstrecke
-2. Reibungsverlust im Schlauch
-3. Höhenunterschiede zwischen den Wegpunkten
+## Nutzung auf dem Smartphone
 
-Die Berechnung folgt dabei dem Grundprinzip:
+Auf kleinen Bildschirmen bleibt die Karte als Hauptansicht sichtbar:
 
-- Effektive Strecke = Kartenstrecke × Laying-Faktor
-- Reibungsverlust = (effektive Strecke / 100) × Reibung pro 100 m
-- Höhenänderung = Höhenunterschied / 10 in bar
-- Wenn der Druck unter den Mindestwert fällt, wird eine Pumpe platziert
+- Das Menü wird über **☰ Menü** geöffnet und wieder geschlossen.
+- Das Berechnungsergebnis kann als **Normal**, **Kompakt** oder **Aus** angezeigt werden.
+- Im kompakten Modus bleiben nur die wichtigsten Werte sichtbar.
+- Das Höhenprofil liegt am unteren Rand und kann bei Bedarf genutzt werden.
 
-## Schnellstart
+## Planung teilen
 
-### Voraussetzungen
+Jede Änderung an Wegpunkten und Einstellungen wird automatisch in der URL gespeichert.
 
-- Node.js 18 oder höher
-- npm oder pnpm
+1. Menü öffnen.
+2. Unter **Teilen** auf **Link kopieren** tippen oder klicken.
+3. Den Link an eine andere Person senden.
 
-### Installation
+Die empfangende Person sieht nach dem Öffnen dieselbe Planung mit denselben Wegpunkten und Einstellungen.
 
-```bash
-npm install
-```
+Für die Übernahme auf ein Smartphone:
 
-### Entwicklung starten
-
-```bash
-npm run dev
-```
-
-Danach öffnest du die lokale App im Browser, normalerweise unter:
-
-```text
-http://localhost:5173
-```
-
-### Build erzeugen
-
-```bash
-npm run build
-```
-
-### Vorschau des Builds
-
-```bash
-npm run preview
-```
-
-## Verwendungsablauf
-
-1. Karte öffnen und Wegpunkte setzen
-2. Startpunkt und Zielpunkt definieren
-3. Zwischenpunkte je nach Bedarf ergänzen
-4. Höhenwerte automatisch abrufen lassen
-5. Schlauchfaktor und Pumpenprofil anpassen
-6. Berechnung prüfen und Ergebnisse im Dashboard auswerten
-
-## Konfigurierbare Parameter
-
-- Schlauchlänge pro B-Schlauch: Standard 20 m
-- Reibungsverlust pro 100 m
-- Laying-Faktor für reale Leitungsführung
-- Pumpenprofil:
-  - PFPN 10-1000
-  - TS 8/8
-  - custom
-- Mindestdruck am Pumpeneingang
-- maximale Ausgangsleistung der Pumpe
+1. **QR-Code** im Menü auswählen.
+2. Den angezeigten QR-Code mit dem Smartphone scannen.
+3. Den geöffneten Link im mobilen Browser aufrufen.
 
 ## Hinweise
 
-- Die App nutzt OpenStreetMap-Karten und eine externe Höhen-API.
-- Ein stabiler Internetzugang ist für die Höhenabfrage erforderlich.
-- Die Berechnung dient als Planungs- und Entscheidungsunterstützung und ist nicht als regulatorische oder technisch verbindliche Norm anzusehen.
+- Karten-, Höhen- und Routendaten stammen von externen Diensten und benötigen eine Internetverbindung.
+- Hydrantendaten sind OpenStreetMap-Daten und möglicherweise nicht vollständig oder aktuell.
+- Die Ergebnisse dienen der Planung und Entscheidungsunterstützung. Sie ersetzen keine örtliche Prüfung, Einsatzleitung oder verbindliche technische Berechnung.
+- Vor einer Verwendung im Einsatz müssen Strecke, Wasserentnahmestelle, Schlauchmaterial und Pumpen vor Ort überprüft werden.
 
-## Lizenz
+## Lokale Entwicklung
 
-Dieses Projekt ist frei für den internen und experimentellen Einsatz im Rahmen des jeweiligen Repository- oder Teamkontexts.
-
-## Entwicklerhinweis
-
-Für die lokale Qualitätssicherung kannst du zusätzlich folgenden Check ausführen:
+Voraussetzungen: Node.js 18 oder höher und npm.
 
 ```bash
+npm install
+npm run dev
+```
+
+Die lokale Anwendung ist anschließend normalerweise unter `http://localhost:5173` erreichbar.
+
+Für einen Produktions-Build und die Qualitätsprüfung:
+
+```bash
+npm run build
 npm run lint
 ```
 
-Wenn du das Projekt weiterentwickeln möchtest, ist die Struktur in `src/components`, `src/store` und `src/utils` bereits auf eine einfache Erweiterung vorbereitet.
+## Lizenz
+
+Dieses Projekt ist für den internen und experimentellen Einsatz im jeweiligen Repository- oder Teamkontext vorgesehen.
 
