@@ -29,7 +29,7 @@ export function calculateWaterRelay(
   for (let i = 0; i < waypoints.length - 1; i++) {
     const p1 = waypoints[i];
     const p2 = waypoints[i + 1];
-    const dist = calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
+    const dist = p2.routeDistance ?? calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
     mapDistance += dist;
     segmentDetails.push({
       distance: dist,
@@ -61,7 +61,7 @@ export function calculateWaterRelay(
   for (let i = 0; i < waypoints.length - 1; i++) {
     const p1 = waypoints[i];
     const p2 = waypoints[i + 1];
-    const segMapDist = calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
+    const segMapDist = p2.routeDistance ?? calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
     if (segMapDist === 0) continue;
 
     const elevChange = p2.elevation - p1.elevation;

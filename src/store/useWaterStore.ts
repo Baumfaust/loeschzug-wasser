@@ -6,8 +6,11 @@ interface WaterStore {
   hoseConfig: HoseConfig;
   pumpConfig: PumpConfig;
   
+  followRoads: boolean;
+
   // Actions
-  addWaypoint: (lat: number, lng: number, elevation?: number) => void;
+  setFollowRoads: (followRoads: boolean) => void;
+  addWaypoint: (lat: number, lng: number, elevation?: number, route?: { followsRoads: boolean; routeDistance?: number; routePath?: [number, number][] }) => void;
   updateWaypointElevation: (id: string, elevation: number) => void;
   removeWaypoint: (id: string) => void;
   clearWaypoints: () => void;
@@ -33,10 +36,13 @@ const defaultPumpConfig: PumpConfig = {
 
 export const useWaterStore = create<WaterStore>((set) => ({
   waypoints: [],
+  followRoads: false,
   hoseConfig: defaultHoseConfig,
   pumpConfig: defaultPumpConfig,
 
-  addWaypoint: (lat, lng, elevation = 0) =>
+  setFollowRoads: (followRoads) => set({ followRoads }),
+
+  addWaypoint: (lat, lng, elevation = 0, route) =>
     set((state) => ({
       waypoints: [
         ...state.waypoints,
@@ -45,6 +51,7 @@ export const useWaterStore = create<WaterStore>((set) => ({
           lat,
           lng,
           elevation,
+          ...route,
         },
       ],
     })),

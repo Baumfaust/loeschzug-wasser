@@ -6,6 +6,7 @@ import { useWaterStore } from '../../store/useWaterStore';
 import { type CalculationResult } from '../../types/water';
 import { fetchElevationForCoordinates } from '../../utils/elevation';
 import { geocodeLocation } from '../../utils/geocode';
+import { routeBetweenPoints } from '../../utils/route';
 
 const debugConfigModules = import.meta.glob('../../debug-config.local.ts', {
   eager: true,
@@ -76,10 +77,20 @@ const DebugLocationInitializer: React.FC = () => {
 };
 
 export const MapView: React.FC<{ result: CalculationResult }> = ({ result }) => {
-  const { waypoints, addWaypoint, updateWaypointElevation, removeWaypoint } = useWaterStore();
+  const { waypoints, addWaypoint, updateWaypointElevation, removeWaypoint, followRoads } = useWaterStore();
 
   const handleMapClick = async (lat: number, lng: number) => {
-    addWaypoint(lat, lng, 0);
+    const previousWaypoint = useWaterStore.getState().waypoints.slice(-1)[0];
+    const shouldFollowRoads = followRoads;
+    const route = shouldFollowRoads && previousWaypoint
+      ? await routeBetweenPoints(previousWaypoint, { lat, lng })
+      : null;
+
+    addWaypoint(lat, lng, 0, {
+      followsRoads: shouldFollowRoads,
+      routeDistance: route?.distance,
+      routePath: route?.path,
+    });
     const elevations = await fetchElevationForCoordinates([{ lat, lng }]);
     if (elevations.length > 0) {
       const latestId = useWaterStore.getState().waypoints.slice(-1)[0]?.id;
@@ -87,7 +98,6 @@ export const MapView: React.FC<{ result: CalculationResult }> = ({ result }) => 
     }
   };
 
-  const coords = waypoints.map((w) => [w.lat, w.lng] as [number, number]);
   const center: [number, number] = waypoints.length > 0 ? [waypoints[0].lat, waypoints[0].lng] : [51.1657, 10.4515];
 
   return (
@@ -97,7 +107,14 @@ export const MapView: React.FC<{ result: CalculationResult }> = ({ result }) => 
         <DebugLocationInitializer />
         <MapClickHandler onMapClick={handleMapClick} />
 
-        {coords.length > 1 && <Polyline positions={coords} pathOptions={{ color: '#0ea5e9', weight: 4, opacity: 0.8 }} />}
+        {waypoints.slice(1).map((waypoint, index) => {
+          const start = waypoints[index];
+          const positions = waypoint.routePath ?? [
+            [start.lat, start.lng],
+            [waypoint.lat, waypoint.lng],
+          ];
+          return <Polyline key={`segment-${waypoint.id}`} positions={positions} pathOptions={{ color: '#0ea5e9', weight: 4, opacity: 0.8 }} />;
+        })}
 
         {waypoints.map((wp, i) => {
           let icon = waypointIcon;

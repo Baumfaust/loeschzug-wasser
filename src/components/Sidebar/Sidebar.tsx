@@ -11,6 +11,8 @@ export const Sidebar: React.FC = () => {
     updatePumpConfig,
     waypoints,
     clearWaypoints,
+    followRoads,
+    setFollowRoads,
   } = useWaterStore();
 
   return (
@@ -118,6 +120,23 @@ export const Sidebar: React.FC = () => {
               />
             </div>
           </div>
+        </div>
+
+        {/* Routing */}
+        <div className="bg-slate-800/50 p-2.5 rounded-lg border border-slate-700/50 space-y-2">
+          <div className="font-semibold text-cyan-400">Routenführung</div>
+          <label className="flex items-start gap-2 text-slate-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={followRoads}
+              onChange={(e) => setFollowRoads(e.target.checked)}
+              className="mt-0.5 accent-cyan-500"
+            />
+            <span>
+              <span className="block text-white">Straßen folgen</span>
+              <span className="block text-[10px] text-slate-400">Gilt nur für neu gesetzte Wegpunkte.</span>
+            </span>
+          </label>
         </div>
 
         {/* Waypoints */}

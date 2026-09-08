@@ -4,6 +4,9 @@ export interface Waypoint {
   lng: number;
   elevation: number; // in meters
   manualElevationOverride?: boolean;
+  followsRoads?: boolean;
+  routeDistance?: number;
+  routePath?: [number, number][];
 }
 
 export interface HoseConfig {
