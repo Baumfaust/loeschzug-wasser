@@ -5,6 +5,14 @@ import 'leaflet/dist/leaflet.css';
 import { useWaterStore } from '../../store/useWaterStore';
 import { type CalculationResult } from '../../types/water';
 import { fetchElevationForCoordinates } from '../../utils/elevation';
+import { geocodeLocation } from '../../utils/geocode';
+
+const debugConfigModules = import.meta.glob('../../debug-config.local.ts', {
+  eager: true,
+  import: 'debugConfig',
+}) as Record<string, { enabled?: boolean; defaultLocationQuery?: string }>;
+
+const debugConfig = Object.values(debugConfigModules)[0];
 
 const startIcon = L.divIcon({
   className: 'custom-div-icon',
@@ -46,6 +54,27 @@ const MapClickHandler: React.FC<{ onMapClick: (lat: number, lng: number) => void
   return null;
 };
 
+const DebugLocationInitializer: React.FC = () => {
+  const map = useMapEvents({});
+
+  React.useEffect(() => {
+    if (!debugConfig?.enabled || !debugConfig.defaultLocationQuery) return;
+
+    let cancelled = false;
+    void geocodeLocation(debugConfig.defaultLocationQuery).then((location) => {
+      if (!cancelled && location) {
+        map.setView([location.lat, location.lng], 13);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [map]);
+
+  return null;
+};
+
 export const MapView: React.FC<{ result: CalculationResult }> = ({ result }) => {
   const { waypoints, addWaypoint, updateWaypointElevation, removeWaypoint } = useWaterStore();
 
@@ -65,6 +94,7 @@ export const MapView: React.FC<{ result: CalculationResult }> = ({ result }) => 
     <div className="relative flex-1 h-full w-full">
       <MapContainer center={center} zoom={waypoints.length > 0 ? 13 : 6} style={{ width: '100%', height: '100%' }} className="z-0">
         <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <DebugLocationInitializer />
         <MapClickHandler onMapClick={handleMapClick} />
 
         {coords.length > 1 && <Polyline positions={coords} pathOptions={{ color: '#0ea5e9', weight: 4, opacity: 0.8 }} />}
