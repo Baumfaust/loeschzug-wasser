@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWaterStore } from './store/useWaterStore';
+import { readShareState, createShareUrl } from './utils/share';
 import { calculateWaterRelay } from './utils/hydraulics';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { MapView } from './components/Map/MapView';
@@ -7,8 +8,20 @@ import { ResultsPanel } from './components/Dashboard/ResultsPanel';
 import { ElevationChart } from './components/Dashboard/ElevationChart';
 
 export function App() {
-  const { waypoints, hoseConfig, pumpConfig } = useWaterStore();
+  const { waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, loadSharedState } = useWaterStore();
   const [hoveredDistance, setHoveredDistance] = useState<number | null>(null);
+  const hasLoadedShareState = useRef(false);
+
+  useEffect(() => {
+    const sharedState = readShareState();
+    if (sharedState) loadSharedState(sharedState);
+    hasLoadedShareState.current = true;
+  }, [loadSharedState]);
+
+  useEffect(() => {
+    if (!hasLoadedShareState.current) return;
+    window.history.replaceState(null, '', createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants }));
+  }, [waypoints, hoseConfig, pumpConfig, followRoads, showHydrants]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const calculationResult = calculateWaterRelay(waypoints, hoseConfig, pumpConfig);

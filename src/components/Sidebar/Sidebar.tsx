@@ -1,5 +1,7 @@
 import React from 'react';
+import QRCode from 'qrcode';
 import { useWaterStore } from '../../store/useWaterStore';
+import { createShareUrl } from '../../utils/share';
 import { type PumpProfileType } from '../../types/water';
 
 interface SidebarProps {
@@ -8,6 +10,8 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const [qrCode, setQrCode] = React.useState<string | null>(null);
+  const [copyState, setCopyState] = React.useState<'idle' | 'copied'>('idle');
   const {
     hoseConfig,
     pumpConfig,
@@ -21,6 +25,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     showHydrants,
     setShowHydrants,
   } = useWaterStore();
+
+  const getShareUrl = () => createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants });
+  const copyShareUrl = async () => {
+    await navigator.clipboard.writeText(getShareUrl());
+    setCopyState('copied');
+    window.setTimeout(() => setCopyState('idle'), 1800);
+  };
+  const showQrCode = async () => setQrCode(await QRCode.toDataURL(getShareUrl(), { width: 280, margin: 2 }));
 
   return (
     <>
@@ -181,10 +193,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </div>
       </div>
 
-        <div className="border-t border-slate-800 bg-slate-950 p-2 text-center text-[10px] text-slate-400">
-          Feuerwehr Wasserförderung v1.0
+        <div className="space-y-2 border-t border-slate-800 bg-slate-950 p-3">
+          <div className="text-[11px] font-semibold text-cyan-400">Teilen</div>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={copyShareUrl} className="rounded border border-slate-700 bg-slate-800 px-2 py-2 text-[11px] text-white hover:bg-slate-700">{copyState === 'copied' ? '✓ Kopiert' : '🔗 Link kopieren'}</button>
+            <button type="button" onClick={showQrCode} className="rounded border border-cyan-800 bg-cyan-950 px-2 py-2 text-[11px] text-cyan-200 hover:bg-cyan-900">▦ QR-Code</button>
+          </div>
+          <div className="text-center text-[10px] text-slate-500">Alle Eingaben werden im Link gespeichert.</div>
         </div>
+        <div className="bg-slate-950 p-2 text-center text-[10px] text-slate-400">Feuerwehr Wasserförderung v1.0</div>
       </aside>
+      {qrCode && (
+        <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/75 p-4" onClick={() => setQrCode(null)}>
+          <div className="w-full max-w-xs rounded-2xl bg-white p-4 text-center text-slate-900 shadow-2xl" onClick={(event) => event.stopPropagation()}>
+            <h2 className="mb-3 font-bold">Konfiguration scannen</h2>
+            <img src={qrCode} alt="QR-Code der aktuellen Konfiguration" className="mx-auto w-full" />
+            <button type="button" onClick={() => setQrCode(null)} className="mt-3 rounded bg-slate-800 px-4 py-2 text-sm text-white">Schließen</button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
