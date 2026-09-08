@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapContainer, TileLayer, Polyline, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Marker, Popup, CircleMarker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useWaterStore } from '../../store/useWaterStore';
@@ -7,6 +7,7 @@ import { type CalculationResult } from '../../types/water';
 import { fetchElevationForCoordinates } from '../../utils/elevation';
 import { geocodeLocation } from '../../utils/geocode';
 import { routeBetweenPoints } from '../../utils/route';
+import { calculateDistance } from '../../utils/elevation';
 
 const debugConfigModules = import.meta.glob('../../debug-config.local.ts', {
   eager: true,
@@ -43,11 +44,17 @@ const pumpIcon = L.divIcon({
   iconAnchor: [12, 12],
 });
 
+interface MapViewProps {
+  result: CalculationResult;
+  hoveredDistance: number | null;
+  onHoverDistance: (distance: number | null) => void;
+}
+
 const MapClickHandler: React.FC<{ onMapClick: (lat: number, lng: number) => void }> = ({ onMapClick }) => {
   useMapEvents({
     click(e) {
       const target = e.originalEvent.target;
-      if (target instanceof HTMLElement && target.closest('.leaflet-popup')) return;
+      if (target instanceof HTMLElement && (target.closest('.leaflet-popup') || target.closest('.leaflet-marker-icon'))) return;
 
       onMapClick(e.latlng.lat, e.latlng.lng);
     },
@@ -76,7 +83,7 @@ const DebugLocationInitializer: React.FC = () => {
   return null;
 };
 
-export const MapView: React.FC<{ result: CalculationResult }> = ({ result }) => {
+export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHoverDistance }) => {
   const { waypoints, addWaypoint, updateWaypointElevation, removeWaypoint, followRoads } = useWaterStore();
 
   const handleMapClick = async (lat: number, lng: number) => {
@@ -113,8 +120,27 @@ export const MapView: React.FC<{ result: CalculationResult }> = ({ result }) => 
             [start.lat, start.lng],
             [waypoint.lat, waypoint.lng],
           ];
-          return <Polyline key={`segment-${waypoint.id}`} positions={positions} pathOptions={{ color: '#0ea5e9', weight: 4, opacity: 0.8 }} />;
+          const segmentDistance = result.segmentDetails[index]?.distance ?? waypoint.routeDistance ?? calculateDistance(start.lat, start.lng, waypoint.lat, waypoint.lng);
+          const segmentStart = (result.segmentDetails[index]?.accumulatedDistance ?? segmentDistance) - segmentDistance;
+          const isHovered = hoveredDistance !== null && hoveredDistance >= segmentStart && hoveredDistance <= segmentStart + segmentDistance;
+
+          return (
+            <Polyline
+              key={`segment-${waypoint.id}`}
+              positions={positions}
+              pathOptions={{ color: isHovered ? '#facc15' : '#0ea5e9', weight: isHovered ? 7 : 4, opacity: 0.9 }}
+              eventHandlers={{
+                mouseover: () => onHoverDistance(segmentStart + segmentDistance / 2),
+                mouseout: () => onHoverDistance(null),
+              }}
+            />
+          );
         })}
+
+        {hoveredDistance !== null && (() => {
+          const point = getCoord(waypoints, hoveredDistance);
+          return point ? <CircleMarker center={[point.lat, point.lng]} radius={8} pathOptions={{ color: '#facc15', fillColor: '#facc15', fillOpacity: 0.9, weight: 3 }} /> : null;
+        })()}
 
         {waypoints.map((wp, i) => {
           let icon = waypointIcon;
@@ -127,7 +153,14 @@ export const MapView: React.FC<{ result: CalculationResult }> = ({ result }) => 
                 <div className="text-slate-900 text-xs space-y-1 p-1">
                   <div className="font-bold">{i === 0 ? '🟢 Start' : i === waypoints.length - 1 ? '🔴 Ziel' : `📍 Punkt #${i + 1}`}</div>
                   <div>Höhe: {Math.round(wp.elevation)}m</div>
-                  <button onClick={() => removeWaypoint(wp.id)} className="w-full bg-rose-500 text-white rounded py-1 px-2 font-medium">Löschen</button>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      removeWaypoint(wp.id);
+                    }}
+                    onMouseDown={(event) => event.stopPropagation()}
+                    className="w-full bg-rose-500 text-white rounded py-1 px-2 font-medium"
+                  >Löschen</button>
                 </div>
               </Popup>
             </Marker>
@@ -153,20 +186,40 @@ export const MapView: React.FC<{ result: CalculationResult }> = ({ result }) => 
   );
 };
 
-function getCoord(waypoints: { lat: number; lng: number }[], target: number) {
+function getCoord(waypoints: { lat: number; lng: number; routeDistance?: number; routePath?: [number, number][] }[], target: number) {
   if (waypoints.length < 2) return null;
-  let acc = 0;
+  let accumulated = 0;
   for (let i = 0; i < waypoints.length - 1; i++) {
-    const p1 = waypoints[i], p2 = waypoints[i + 1];
-    const d = hav(p1.lat, p1.lng, p2.lat, p2.lng);
-    if (acc + d >= target) {
-      const r = d > 0 ? (target - acc) / d : 0;
-      return { lat: p1.lat + (p2.lat - p1.lat) * r, lng: p1.lng + (p2.lng - p1.lng) * r };
+    const start = waypoints[i];
+    const end = waypoints[i + 1];
+    const path = end.routePath ?? [[start.lat, start.lng], [end.lat, end.lng]];
+    const distance = end.routeDistance ?? pathDistance(path);
+    if (target <= accumulated + distance) {
+      return pointOnPath(path, Math.max(0, target - accumulated));
     }
-    acc += d;
+    accumulated += distance;
   }
   const last = waypoints[waypoints.length - 1];
   return { lat: last.lat, lng: last.lng };
+}
+
+function pathDistance(path: [number, number][]) {
+  return path.slice(1).reduce((total, point, index) => total + hav(path[index][0], path[index][1], point[0], point[1]), 0);
+}
+
+function pointOnPath(path: [number, number][], target: number) {
+  let accumulated = 0;
+  for (let i = 1; i < path.length; i++) {
+    const start = path[i - 1], end = path[i];
+    const distance = hav(start[0], start[1], end[0], end[1]);
+    if (target <= accumulated + distance) {
+      const ratio = distance > 0 ? (target - accumulated) / distance : 0;
+      return { lat: start[0] + (end[0] - start[0]) * ratio, lng: start[1] + (end[1] - start[1]) * ratio };
+    }
+    accumulated += distance;
+  }
+  const last = path[path.length - 1];
+  return { lat: last[0], lng: last[1] };
 }
 
 function hav(lat1: number, lon1: number, lat2: number, lon2: number) {
