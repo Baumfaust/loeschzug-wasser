@@ -1,4 +1,4 @@
-import { type Waypoint, type HoseConfig, type PumpConfig, type CalculationResult, type PumpStation } from '../types/water';
+import { type Waypoint, type HoseConfig, type PumpConfig, type CalculationResult, type PumpStation, type PressureProfileSample } from '../types/water';
 import { calculateDistance } from './elevation';
 import { ELEVATION_SAMPLE_INTERVAL_METERS } from './route';
 
@@ -18,6 +18,7 @@ export function calculateWaterRelay(
       pumpStations: [],
       segmentDetails: [],
       profileSamples: [],
+      pressureProfile: [],
     };
   }
 
@@ -56,6 +57,7 @@ export function calculateWaterRelay(
   // We can simulate step-by-step or segment-by-segment
   // Let's break down into small meter steps (e.g. every 1m or per segment) for high precision
   let totalFrictionLoss = 0;
+  const pressureProfile: PressureProfileSample[] = [{ distance: 0, pressure: pumpConfig.maxOutputPressure, frictionLoss: 0, elevationEffect: 0 }];
   const totalElevationDelta = profileSamples.length > 1
     ? profileSamples[profileSamples.length - 1].elevation - profileSamples[0].elevation
     : waypoints[waypoints.length - 1].elevation - waypoints[0].elevation;
@@ -86,6 +88,12 @@ export function calculateWaterRelay(
       const totalDrop = frictionDrop + elevationDrop;
       currentPressure -= totalDrop;
       totalFrictionLoss += frictionDrop;
+      pressureProfile.push({
+        distance: accumulatedDist,
+        pressure: currentPressure,
+        frictionLoss: totalFrictionLoss,
+        elevationEffect: sample.elevation - profileSamples[0].elevation,
+      });
 
       // Check if we need a relay pump before reaching the next step (if pressure falls below minInputPressure)
       // Except if this is the very last point
@@ -97,8 +105,15 @@ export function calculateWaterRelay(
           pressureBeforePump: currentPressure + totalDrop, // pressure right before drop or at threshold
           pumpIndex: pumpIndex++,
         });
-        // Reset pressure to max output pressure
+        // Reset pressure to the configured pump output and expose the jump in the profile.
         currentPressure = pumpConfig.maxOutputPressure;
+        pressureProfile.push({
+          distance: accumulatedDist,
+          pressure: currentPressure,
+          frictionLoss: totalFrictionLoss,
+          elevationEffect: currentElev - profileSamples[0].elevation,
+          pumpReset: true,
+        });
       }
     }
   }
@@ -113,6 +128,7 @@ export function calculateWaterRelay(
     pumpStations,
     segmentDetails,
     profileSamples,
+    pressureProfile,
   };
 }
 

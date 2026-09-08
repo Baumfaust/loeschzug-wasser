@@ -47,6 +47,14 @@ export interface PumpStation {
   pumpIndex: number;
 }
 
+export interface PressureProfileSample {
+  distance: number;
+  pressure: number;
+  frictionLoss: number;
+  elevationEffect: number;
+  pumpReset?: boolean;
+}
+
 export interface CalculationResult {
   mapDistance: number; // meters
   effectiveDistance: number; // meters
@@ -62,4 +70,5 @@ export interface CalculationResult {
     accumulatedDistance: number;
   }[];
   profileSamples: { distance: number; elevation: number }[];
+  pressureProfile: PressureProfileSample[];
 }

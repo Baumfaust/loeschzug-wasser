@@ -18,6 +18,7 @@ describe('calculateWaterRelay: empty and basic cases', () => {
   it('returns zero for no waypoints', () => {
     const result = calculateWaterRelay([], hose(), pumpConfig);
     expect(result).toMatchObject({ mapDistance: 0, frictionLossTotal: 0, elevationDeltaTotal: 0, netPressureLoss: 0 });
+    expect(result.pressureProfile).toEqual([]);
   });
 
   it('returns zero for one waypoint', () => {
@@ -48,13 +49,21 @@ describe('calculateWaterRelay: pressure components', () => {
     expect(result.effectiveDistance).toBeCloseTo(803, 10);
     expect(result.frictionLossTotal).toBe(8.03);
     expect(result.netPressureLoss).toBe(8.03);
+    expect(result.pressureProfile[0]).toMatchObject({ distance: 0, pressure: 10, frictionLoss: 0 });
+    expect(result.pressureProfile.at(-1)?.pressure).toBeCloseTo(1.97, 2);
   });
 
   it('adds 1 bar per 10 m of uphill elevation', () => {
-    const result = resultFor(routedEnd(130, 730, undefined), point('start', 100), hose(1, 1));
+    const result = calculateWaterRelay(
+      [point('start', 100), routedEnd(130, 730, undefined)],
+      hose(1, 1),
+      { ...pumpConfig, minInputPressure: -100 },
+    );
     expect(result.elevationDeltaTotal).toBe(30);
     expect(result.frictionLossTotal).toBe(7.3);
     expect(result.netPressureLoss).toBe(10.3);
+    const terminalSample = result.pressureProfile.find((sample) => sample.distance === result.mapDistance);
+    expect(terminalSample?.pressure).toBeCloseTo(-0.3, 2);
   });
 
   it('subtracts downhill elevation from net pressure loss', () => {
@@ -62,6 +71,7 @@ describe('calculateWaterRelay: pressure components', () => {
     expect(result.elevationDeltaTotal).toBe(-30);
     expect(result.frictionLossTotal).toBe(7.3);
     expect(result.netPressureLoss).toBe(4.3);
+    expect(result.pressureProfile.at(-1)?.pressure).toBeCloseTo(5.7, 2);
   });
 
   it('keeps friction loss independent from elevation', () => {
@@ -124,6 +134,7 @@ describe('calculateWaterRelay: hose and pump behavior', () => {
     const result = resultFor(routedEnd(100, 1000, undefined), point('start'), hose(1, 1));
     expect(result.pumpStations.length).toBeGreaterThan(0);
     expect(result.pumpStations.every((pump) => pump.distance > 0 && pump.distance < 1000)).toBe(true);
+    expect(result.pressureProfile.some((sample) => sample.pumpReset && sample.pressure === pumpConfig.maxOutputPressure)).toBe(true);
   });
 
   it('handles many routed segments without losing accumulated distance', () => {

@@ -27,6 +27,11 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
   const elevRange = Math.max(maxElev - minElev, 4);
 
   const totalDist = result.mapDistance || 1;
+  const pressureSamples = result.pressureProfile;
+  const pressureValues = pressureSamples.map((sample) => sample.pressure);
+  const pressureMin = Math.floor(Math.min(0, ...pressureValues) - 1);
+  const pressureMax = Math.ceil(Math.max(0, ...pressureValues) + 1);
+  const pressureRange = Math.max(pressureMax - pressureMin, 2);
   const width = 760;
   const height = 190;
   const padding = { top: 22, right: 20, bottom: 30, left: 42 };
@@ -46,6 +51,13 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
   const hoveredPoint = hoveredIndex === null || hoveredIndex < 0 ? null : points[hoveredIndex];
   const profilePath = createSmoothPath([{ x: points[0].x1, y: points[0].y1 }, ...points.map((point) => ({ x: point.x2, y: point.y2 }))]);
   const areaPath = `${profilePath} L ${points[points.length - 1].x2} ${height - padding.bottom} L ${points[0].x1} ${height - padding.bottom} Z`;
+  const pressurePoints = pressureSamples.map((sample) => ({
+    x: padding.left + (sample.distance / totalDist) * chartWidth,
+    y: padding.top + (1 - (sample.pressure - pressureMin) / pressureRange) * chartHeight,
+    sample,
+  }));
+  const pressurePath = createSmoothPath(pressurePoints);
+  const pressurePumpPoints = pressurePoints.filter((point) => point.sample.pumpReset);
 
   return (
     <div className="absolute bottom-2 left-2 right-2 z-[1000] ml-0 rounded-xl border border-slate-700/80 bg-slate-900/95 p-2 text-slate-100 shadow-2xl backdrop-blur-md sm:bottom-4 sm:left-96 sm:right-4 sm:ml-6 sm:p-3">
@@ -59,19 +71,34 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
         </span>
       </div>
 
+      <div className="mb-1 flex flex-wrap gap-3 text-[10px] text-slate-400">
+        <span className="text-cyan-300">━ Höhe</span>
+        <span className="text-amber-300">╌ Druck (Reibung + Höhe)</span>
+        <span className="text-amber-200">● Pumpenreset auf {result.pressureProfile[0]?.pressure ?? 0} bar</span>
+      </div>
       <div className="relative w-full overflow-x-auto">
         <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-36" role="img" aria-label="Höhenprofil">
           <line x1={padding.left} y1={padding.top} x2={width - padding.right} y2={padding.top} stroke="#475569" strokeWidth="1" strokeDasharray="4 4" />
           <line x1={padding.left} y1={height - padding.bottom} x2={width - padding.right} y2={height - padding.bottom} stroke="#475569" strokeWidth="1" />
           <text x={padding.left - 6} y={padding.top + 4} textAnchor="end" fill="#94a3b8" fontSize="10">{Math.round(maxElev)}m</text>
           <text x={padding.left - 6} y={height - padding.bottom + 4} textAnchor="end" fill="#94a3b8" fontSize="10">{Math.round(minElev)}m</text>
+          <text x={width - padding.right + 6} y={padding.top + 4} textAnchor="start" fill="#fbbf24" fontSize="10">{pressureMax} bar</text>
+          <text x={width - padding.right + 6} y={height - padding.bottom + 4} textAnchor="start" fill="#fbbf24" fontSize="10">{pressureMin} bar</text>
           <defs>
             <linearGradient id="elevationGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.4" /><stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.05" />
             </linearGradient>
           </defs>
           <path d={areaPath} fill="url(#elevationGradient)" />
+          <line x1={padding.left} y1={padding.top + (1 - (0 - pressureMin) / pressureRange) * chartHeight} x2={width - padding.right} y2={padding.top + (1 - (0 - pressureMin) / pressureRange) * chartHeight} stroke="#fbbf24" strokeOpacity="0.2" strokeDasharray="2 4" />
           <path d={profilePath} fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          {pressurePath && <path d={pressurePath} fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeDasharray="6 3" strokeLinecap="round" strokeLinejoin="round" />}
+          {pressurePumpPoints.map((point, index) => (
+            <g key={`pressure-pump-${index}`}>
+              <circle cx={point.x} cy={point.y} r="4" fill="#fbbf24" stroke="#fff" strokeWidth="1.5" />
+              <text x={point.x} y={point.y + 14} textAnchor="middle" fill="#fbbf24" fontSize="9" fontWeight="bold">Pumpe</text>
+            </g>
+          ))}
           {hoveredPoint && <line x1={hoveredPoint.x1} y1={hoveredPoint.y1} x2={hoveredPoint.x2} y2={hoveredPoint.y2} stroke="#facc15" strokeWidth="5" strokeLinecap="round" />}
           {result.pumpStations.map((pump) => {
             const pumpX = padding.left + (pump.distance / totalDist) * chartWidth;
