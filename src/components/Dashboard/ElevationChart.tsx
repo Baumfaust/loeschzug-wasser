@@ -10,7 +10,13 @@ interface ElevationChartProps {
 export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredDistance, onHoverDistance }) => {
   if (result.segmentDetails.length === 0) return null;
 
-  const elevations = result.segmentDetails.flatMap((segment) => [segment.elevationStart, segment.elevationEnd]);
+  const profileSamples = result.profileSamples.length > 0
+    ? result.profileSamples
+    : result.segmentDetails.flatMap((segment, index) => [
+        { distance: index === 0 ? 0 : result.segmentDetails[index - 1].accumulatedDistance, elevation: segment.elevationStart },
+        { distance: segment.accumulatedDistance, elevation: segment.elevationEnd },
+      ]);
+  const elevations = profileSamples.map((sample) => sample.elevation);
   const actualMin = Math.min(...elevations);
   const actualMax = Math.max(...elevations);
   const actualRange = actualMax - actualMin;
@@ -25,17 +31,17 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
   const padding = { top: 22, right: 20, bottom: 30, left: 42 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
-  const points = result.segmentDetails.map((segment, index) => {
-    const startDistance = segment.accumulatedDistance - segment.distance;
-    const x1 = padding.left + (startDistance / totalDist) * chartWidth;
-    const x2 = padding.left + (segment.accumulatedDistance / totalDist) * chartWidth;
-    const y1 = padding.top + (1 - (segment.elevationStart - minElev) / elevRange) * chartHeight;
-    const y2 = padding.top + (1 - (segment.elevationEnd - minElev) / elevRange) * chartHeight;
-    return { x1, x2, y1, y2, startDistance, segment, index };
+  const points = profileSamples.slice(1).map((sample, index) => {
+    const previous = profileSamples[index];
+    const x1 = padding.left + (previous.distance / totalDist) * chartWidth;
+    const x2 = padding.left + (sample.distance / totalDist) * chartWidth;
+    const y1 = padding.top + (1 - (previous.elevation - minElev) / elevRange) * chartHeight;
+    const y2 = padding.top + (1 - (sample.elevation - minElev) / elevRange) * chartHeight;
+    return { x1, x2, y1, y2, startDistance: previous.distance, distance: sample.distance - previous.distance, elevation: sample.elevation, index };
   });
   const hoveredIndex = hoveredDistance === null
     ? null
-    : result.segmentDetails.findIndex((segment) => hoveredDistance <= segment.accumulatedDistance);
+    : points.findIndex((point) => hoveredDistance <= point.startDistance + point.distance);
   const hoveredPoint = hoveredIndex === null || hoveredIndex < 0 ? null : points[hoveredIndex];
   const profilePath = `M ${points[0].x1} ${points[0].y1} ${points.map((point) => `L ${point.x2} ${point.y2}`).join(' ')}`;
   const areaPath = `${profilePath} L ${points[points.length - 1].x2} ${height - padding.bottom} L ${points[0].x1} ${height - padding.bottom} Z`;
@@ -48,7 +54,7 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
         </h4>
         <span className="text-[10px] text-slate-400 font-mono">
           {Math.round(actualMin)}–{Math.round(actualMax)}m · Differenz {Math.round(actualRange)}m
-          {hoveredPoint && ` · Punkt ${hoveredPoint.index + 1}: ${Math.round(hoveredPoint.segment.elevationEnd)}m`}
+          {hoveredPoint && ` · Höhe ${Math.round(hoveredPoint.elevation)}m`}
         </span>
       </div>
 
@@ -75,7 +81,7 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
           })}
           {points.map((point) => (
             <rect key={`hover-${point.index}`} x={point.x1} y={padding.top} width={Math.max(point.x2 - point.x1, 2)} height={chartHeight} fill="transparent"
-              onMouseEnter={() => onHoverDistance(point.startDistance + point.segment.distance / 2)} onMouseLeave={() => onHoverDistance(null)} />
+              onMouseEnter={() => onHoverDistance(point.startDistance + point.distance / 2)} onMouseLeave={() => onHoverDistance(null)} />
           ))}
         </svg>
       </div>

@@ -7,11 +7,14 @@ interface WaterStore {
   pumpConfig: PumpConfig;
   
   followRoads: boolean;
+  showHydrants: boolean;
 
   // Actions
   setFollowRoads: (followRoads: boolean) => void;
-  addWaypoint: (lat: number, lng: number, elevation?: number, route?: { followsRoads: boolean; routeDistance?: number; routePath?: [number, number][] }) => void;
+  setShowHydrants: (showHydrants: boolean) => void;
+  addWaypoint: (lat: number, lng: number, elevation?: number, route?: { followsRoads: boolean; routeDistance?: number; routePath?: [number, number][]; routeSamples?: Waypoint['routeSamples'] }) => void;
   updateWaypointElevation: (id: string, elevation: number) => void;
+  updateWaypointRoute: (id: string, route: { routeDistance: number; routePath: [number, number][]; routeSamples: Waypoint['routeSamples'] }) => void;
   removeWaypoint: (id: string) => void;
   clearWaypoints: () => void;
   reorderWaypoints: (startIndex: number, endIndex: number) => void;
@@ -36,11 +39,13 @@ const defaultPumpConfig: PumpConfig = {
 
 export const useWaterStore = create<WaterStore>((set) => ({
   waypoints: [],
-  followRoads: false,
+  followRoads: true,
+  showHydrants: false,
   hoseConfig: defaultHoseConfig,
   pumpConfig: defaultPumpConfig,
 
   setFollowRoads: (followRoads) => set({ followRoads }),
+  setShowHydrants: (showHydrants) => set({ showHydrants }),
 
   addWaypoint: (lat, lng, elevation = 0, route) =>
     set((state) => ({
@@ -61,6 +66,11 @@ export const useWaterStore = create<WaterStore>((set) => ({
       waypoints: state.waypoints.map((wp) =>
         wp.id === id ? { ...wp, elevation, manualElevationOverride: true } : wp
       ),
+    })),
+
+  updateWaypointRoute: (id, route) =>
+    set((state) => ({
+      waypoints: state.waypoints.map((wp) => (wp.id === id ? { ...wp, ...route } : wp)),
     })),
 
   removeWaypoint: (id) =>

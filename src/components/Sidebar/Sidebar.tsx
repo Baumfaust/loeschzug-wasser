@@ -13,6 +13,8 @@ export const Sidebar: React.FC = () => {
     clearWaypoints,
     followRoads,
     setFollowRoads,
+    showHydrants,
+    setShowHydrants,
   } = useWaterStore();
 
   return (
@@ -135,6 +137,18 @@ export const Sidebar: React.FC = () => {
             <span>
               <span className="block text-white">Straßen folgen</span>
               <span className="block text-[10px] text-slate-400">Gilt nur für neu gesetzte Wegpunkte.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-slate-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showHydrants}
+              onChange={(e) => setShowHydrants(e.target.checked)}
+              className="mt-0.5 accent-cyan-500"
+            />
+            <span>
+              <span className="block text-white">Hydranten anzeigen</span>
+              <span className="block text-[10px] text-slate-400">OSM-Daten im Umkreis von 200 m.</span>
             </span>
           </label>
         </div>

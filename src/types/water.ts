@@ -1,3 +1,18 @@
+export interface RouteSample {
+  distance: number;
+  lat: number;
+  lng: number;
+  elevation: number;
+}
+
+export interface Hydrant {
+  id: string;
+  lat: number;
+  lng: number;
+  distanceToWaypoint: number;
+  tags?: Record<string, string>;
+}
+
 export interface Waypoint {
   id: string;
   lat: number;
@@ -7,6 +22,7 @@ export interface Waypoint {
   followsRoads?: boolean;
   routeDistance?: number;
   routePath?: [number, number][];
+  routeSamples?: RouteSample[];
 }
 
 export interface HoseConfig {
@@ -44,4 +60,5 @@ export interface CalculationResult {
     elevationEnd: number;
     accumulatedDistance: number;
   }[];
+  profileSamples: { distance: number; elevation: number }[];
 }
