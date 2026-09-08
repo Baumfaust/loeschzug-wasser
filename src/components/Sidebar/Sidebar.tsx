@@ -201,7 +201,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
           <div className="text-center text-[10px] text-slate-500">Alle Eingaben werden im Link gespeichert.</div>
         </div>
-        <div className="bg-slate-950 p-2 text-center text-[10px] text-slate-400">Feuerwehr Wasserförderung v1.0</div>
+        <div className="space-y-1 bg-slate-950 p-2 text-center text-[10px] text-slate-400">
+          <div>Feuerwehr Wasserförderung v1.0</div>
+          <a
+            href="https://github.com/Baumfaust/loeschzug-wasser"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block text-cyan-400 hover:text-cyan-300 hover:underline"
+          >
+            Über das Projekt auf GitHub
+          </a>
+        </div>
       </aside>
       {qrCode && (
         <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/75 p-4" onClick={() => setQrCode(null)}>
