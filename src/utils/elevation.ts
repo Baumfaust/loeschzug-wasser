@@ -25,17 +25,26 @@ export async function fetchElevationForCoordinates(
   if (locations.length === 0) return [];
 
   try {
-    // EU-DEM is a higher-resolution European DEM than the global fallback.
+    // EU-DEM 25m is the preferred European terrain dataset.
     const locationsQuery = locations.map((loc) => `${loc.lat},${loc.lng}`).join('|');
-    const demResponse = await fetch(`https://api.opentopodata.org/v1/eudem?locations=${encodeURIComponent(locationsQuery)}`);
+    const demResponse = await fetch(`https://api.opentopodata.org/v1/eudem25m?locations=${encodeURIComponent(locationsQuery)}`);
     if (demResponse.ok) {
       const data = await demResponse.json() as { results?: Array<{ elevation?: number | null }> };
-      if (data.results?.length === locations.length && data.results.every((result) => Number.isFinite(result.elevation))) {
-        return data.results.map((result) => result.elevation as number);
-      }
+      const elevations = data.results?.map((result) => result.elevation);
+      if (isCompleteElevationResult(elevations, locations.length)) return elevations;
     }
 
-    // Open-Elevation API accepts POST with JSON payload as a fallback.
+    // Open-Meteo is a reliable global fallback and accepts batched coordinates.
+    const openMeteoUrl = new URL('https://api.open-meteo.com/v1/elevation');
+    openMeteoUrl.searchParams.set('latitude', locations.map((loc) => loc.lat).join(','));
+    openMeteoUrl.searchParams.set('longitude', locations.map((loc) => loc.lng).join(','));
+    const openMeteoResponse = await fetch(openMeteoUrl);
+    if (openMeteoResponse.ok) {
+      const data = await openMeteoResponse.json() as { elevation?: Array<number | null> };
+      if (isCompleteElevationResult(data.elevation, locations.length)) return data.elevation;
+    }
+
+    // Open-Elevation API accepts POST as a final fallback.
     const response = await fetch('https://api.open-elevation.com/api/v1/lookup', {
       method: 'POST',
       headers: {
@@ -51,14 +60,17 @@ export async function fetchElevationForCoordinates(
       throw new Error(`Elevation API error: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    if (data && data.results) {
-      return data.results.map((res: { elevation: number }) => res.elevation);
-    }
+    const data = await response.json() as { results?: Array<{ elevation?: number | null }> };
+    const elevations = data.results?.map((result) => result.elevation);
+    if (isCompleteElevationResult(elevations, locations.length)) return elevations;
   } catch (err) {
-    console.warn('Failed to fetch elevation from EU-DEM/Open-Elevation, falling back to 0m', err);
+    console.warn('Failed to fetch elevation from EU-DEM/Open-Meteo/Open-Elevation', err);
   }
 
-  // Fallback to 0m if API fails
-  return locations.map(() => 0);
+  // Do not replace missing terrain with zeroes: callers can retain their existing profile.
+  return [];
+}
+
+function isCompleteElevationResult(values: Array<number | null | undefined> | undefined, expectedLength: number): values is number[] {
+  return values?.length === expectedLength && values.every((value) => Number.isFinite(value));
 }

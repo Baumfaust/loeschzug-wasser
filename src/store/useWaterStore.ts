@@ -17,7 +17,7 @@ interface WaterStore {
   loadSharedState: (state: Omit<Pick<WaterStore, 'waypoints' | 'hoseConfig' | 'pumpConfig' | 'followRoads' | 'showHydrants' | 'pumpPositions'>, 'pumpPositions'> & { pumpPositions?: Record<number, number> }) => void;
   addWaypoint: (lat: number, lng: number, elevation?: number, route?: { followsRoads: boolean; routeDistance?: number; routePath?: [number, number][]; routeSamples?: Waypoint['routeSamples'] }) => void;
   updateWaypointElevation: (id: string, elevation: number) => void;
-  updateWaypointRoute: (id: string, route: { routeDistance: number; routePath: [number, number][]; routeSamples: Waypoint['routeSamples'] }) => void;
+  updateWaypointRoute: (id: string, route: { routeDistance: number; routePath: [number, number][]; routeSamples?: Waypoint['routeSamples'] }) => void;
   removeWaypoint: (id: string) => void;
   clearWaypoints: () => void;
   reorderWaypoints: (startIndex: number, endIndex: number) => void;
