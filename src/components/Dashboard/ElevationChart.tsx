@@ -1,5 +1,6 @@
 import React from 'react';
 import { type CalculationResult } from '../../types/water';
+import { smoothElevationProfile } from '../../utils/savitzkyGolay';
 
 interface ElevationChartProps {
   result: CalculationResult;
@@ -16,7 +17,7 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
         { distance: index === 0 ? 0 : result.segmentDetails[index - 1].accumulatedDistance, elevation: segment.elevationStart },
         { distance: segment.accumulatedDistance, elevation: segment.elevationEnd },
       ]);
-  const chartSamples = smoothProfile(profileSamples);
+  const chartSamples = smoothElevationProfile(profileSamples);
   const elevations = chartSamples.map((sample) => sample.elevation);
   const actualMin = Math.min(...elevations);
   const actualMax = Math.max(...elevations);
@@ -115,19 +116,6 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
   );
 };
 
-
-function smoothProfile(samples: { distance: number; elevation: number }[]) {
-  if (samples.length < 3) return samples;
-  return samples.map((sample, index) => {
-    const start = Math.max(0, index - 2);
-    const end = Math.min(samples.length - 1, index + 2);
-    const window = samples.slice(start, end + 1);
-    return {
-      distance: sample.distance,
-      elevation: window.reduce((sum, point) => sum + point.elevation, 0) / window.length,
-    };
-  });
-}
 
 function createSmoothPath(points: { x: number; y: number }[]) {
   if (points.length === 0) return '';
