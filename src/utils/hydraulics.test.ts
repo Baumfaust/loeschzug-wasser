@@ -137,6 +137,23 @@ describe('calculateWaterRelay: hose and pump behavior', () => {
     expect(result.pressureProfile.some((sample) => sample.pumpReset && sample.pressure === pumpConfig.maxOutputPressure)).toBe(true);
   });
 
+  it('recalculates the pressure reset at a manually moved pump position', () => {
+    const result = calculateWaterRelay(
+      [point('start'), routedEnd(100, 1000, undefined)],
+      hose(1, 1),
+      pumpConfig,
+      { 1: 400 },
+    );
+
+    expect(result.pumpStations[0]).toMatchObject({ pumpIndex: 1, distance: 400 });
+    expect(result.pressureProfile).toContainEqual(expect.objectContaining({
+      distance: 400,
+      pressure: pumpConfig.maxOutputPressure,
+      pumpReset: true,
+    }));
+    expect(result.pressureProfile.find((sample) => sample.distance === 400)?.frictionLoss).toBeCloseTo(4, 10);
+  });
+
   it('handles many routed segments without losing accumulated distance', () => {
     const waypoints = Array.from({ length: 101 }, (_, index) => ({
       ...point(`wp-${index}`, 100, 51 + index * 0.001, 7),

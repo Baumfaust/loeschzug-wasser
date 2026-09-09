@@ -17,10 +17,19 @@ export function createSharePayload(state: ShareState, compact = false): string {
   const shareState = compact
     ? {
         ...state,
-        waypoints: state.waypoints.map(({ routeSamples: _routeSamples, ...waypoint }) => waypoint),
+        waypoints: state.waypoints.map(({ routeSamples: _routeSamples, routePath, ...waypoint }) => ({
+           ...waypoint,
+           ...(routePath ? { routePath: compactPath(routePath) } : {}),
+         })),
       }
     : state;
   return compressToEncodedURIComponent(JSON.stringify(shareState));
+}
+
+function compactPath(path: [number, number][], maxPoints = 30): [number, number][] {
+  if (path.length <= maxPoints) return path;
+  const step = (path.length - 1) / (maxPoints - 1);
+  return Array.from({ length: maxPoints }, (_, index) => path[Math.round(index * step)]);
 }
 
 export function parseSharePayload(encoded: string): ShareState | null {

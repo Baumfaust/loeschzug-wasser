@@ -28,7 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     pumpPositions,
   } = useWaterStore();
 
-  const getShareUrl = () => createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, pumpPositions });
+  const getShareUrl = () => createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, pumpPositions }, true);
   const copyShareUrl = async () => {
     await navigator.clipboard.writeText(getShareUrl());
     setCopyState('copied');

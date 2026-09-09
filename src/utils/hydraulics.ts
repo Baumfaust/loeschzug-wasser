@@ -44,7 +44,10 @@ export function calculateWaterRelay(
     });
   }
 
-  const profileSamples = buildProfileSamples(waypoints);
+  const manualPumpDistances = Object.values(pumpPositions)
+    .filter((distance) => Number.isFinite(distance) && distance > 0 && distance < mapDistance)
+    .sort((a, b) => a - b);
+  const profileSamples = addPumpDistances(buildProfileSamples(waypoints), manualPumpDistances);
   const effectiveDistance = mapDistance * hoseConfig.layingFactor;
   const totalBProvisions = Math.ceil(effectiveDistance / hoseConfig.lengthPerHose);
 
@@ -96,15 +99,17 @@ export function calculateWaterRelay(
         elevationEffect: sample.elevation - profileSamples[0].elevation,
       });
 
-      // Check if we need a relay pump before reaching the next step (if pressure falls below minInputPressure)
-      // Except if this is the very last point
-      if (currentPressure <= pumpConfig.minInputPressure && sampleIndex < profileSamples.length - 1) {
-        // Place pump here!
-        const currentPumpIndex = pumpIndex++;
-        const requestedDistance = pumpPositions[currentPumpIndex];
-        const stationDistance = Number.isFinite(requestedDistance)
+      // A manually positioned pump takes priority over automatic threshold placement.
+      const currentPumpIndex = pumpIndex;
+      const requestedDistance = pumpPositions[currentPumpIndex];
+      const hasManualPosition = Number.isFinite(requestedDistance);
+      const manualPositionReached = hasManualPosition && accumulatedDist >= requestedDistance;
+      const automaticPositionReached = !hasManualPosition && currentPressure <= pumpConfig.minInputPressure;
+      if ((manualPositionReached || automaticPositionReached) && sampleIndex < profileSamples.length - 1) {
+        const stationDistance = hasManualPosition
           ? Math.max(1, Math.min(mapDistance - 1, requestedDistance))
           : accumulatedDist;
+        pumpIndex++;
         pumpStations.push({
           distance: stationDistance,
           elevation: elevationAtDistance(profileSamples, stationDistance),
@@ -177,6 +182,12 @@ function buildProfileSamples(waypoints: Waypoint[]) {
   }
 
   return samples;
+}
+
+function addPumpDistances(samples: { distance: number; elevation: number }[], distances: number[]) {
+  const additions = distances.filter((distance) => !samples.some((sample) => Math.abs(sample.distance - distance) < 0.01));
+  return [...samples, ...additions.map((distance) => ({ distance, elevation: elevationAtDistance(samples, distance) }))]
+    .sort((a, b) => a.distance - b.distance);
 }
 
 function stepEffDistRatio(stepMapDist: number, layingFactor: number): number {

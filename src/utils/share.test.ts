@@ -33,6 +33,20 @@ describe('share payloads', () => {
     expect(parseSharePayload(createSharePayload(baseState))).toEqual(baseState);
   });
 
+  it('limits dense route geometry in compact payloads', () => {
+    const densePath = Array.from({ length: 500 }, (_, index) => [51 + index * 0.00001, 7 + index * 0.00001] as [number, number]);
+    const state = {
+      ...baseState,
+      waypoints: [{ ...baseState.waypoints[0] }, { ...baseState.waypoints[1], routePath: densePath }],
+    };
+
+    const parsed = parseSharePayload(createSharePayload(state, true));
+    expect(parsed?.waypoints[1].routeSamples).toBeUndefined();
+    expect(parsed?.waypoints[1].routePath).toHaveLength(30);
+    expect(parsed?.waypoints[1].routePath?.[0]).toEqual(densePath[0]);
+    expect(parsed?.waypoints[1].routePath?.at(-1)).toEqual(densePath.at(-1));
+  });
+
   it('round-trips a large waypoint set and checks QR capacity', async () => {
     const createWaypoints = (count: number) => Array.from({ length: count }, (_, index) => ({
       id: `wp-${index}`,

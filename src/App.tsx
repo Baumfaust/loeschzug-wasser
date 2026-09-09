@@ -20,7 +20,7 @@ export function App() {
 
   useEffect(() => {
     if (!hasLoadedShareState.current) return;
-    window.history.replaceState(null, '', createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, pumpPositions }));
+    window.history.replaceState(null, '', createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, pumpPositions }, true));
   }, [waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, pumpPositions]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
