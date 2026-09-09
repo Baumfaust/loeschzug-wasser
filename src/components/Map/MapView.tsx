@@ -146,7 +146,7 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
       followsRoads: shouldFollowRoads,
       routeDistance: route?.distance,
       routePath: route?.path,
-      routeSamples: undefined,
+      routeSamples: samples?.map((sample) => ({ ...sample, elevation: 0 })),
     });
 
     const latestId = useWaterStore.getState().waypoints.slice(-1)[0]?.id;
@@ -156,10 +156,7 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
     const elevations = (await Promise.all(
       chunk(locations, 100).map((batch) => fetchElevationForCoordinates(batch)),
     )).flat();
-    if (elevations.length !== locations.length) {
-      console.warn('Elevation lookup returned an incomplete profile; keeping the route without synthetic zero elevations.');
-      return;
-    }
+    if (elevations.length === 0) return;
 
     if (samples) {
       const routeSamples: RouteSample[] = samples.map((sample, index) => ({
