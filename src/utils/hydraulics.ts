@@ -5,7 +5,8 @@ import { ELEVATION_SAMPLE_INTERVAL_METERS } from './route';
 export function calculateWaterRelay(
   waypoints: Waypoint[],
   hoseConfig: HoseConfig,
-  pumpConfig: PumpConfig
+  pumpConfig: PumpConfig,
+  pumpPositions: Record<number, number> = {},
 ): CalculationResult {
   if (waypoints.length < 2) {
     return {
@@ -99,11 +100,16 @@ export function calculateWaterRelay(
       // Except if this is the very last point
       if (currentPressure <= pumpConfig.minInputPressure && sampleIndex < profileSamples.length - 1) {
         // Place pump here!
+        const currentPumpIndex = pumpIndex++;
+        const requestedDistance = pumpPositions[currentPumpIndex];
+        const stationDistance = Number.isFinite(requestedDistance)
+          ? Math.max(1, Math.min(mapDistance - 1, requestedDistance))
+          : accumulatedDist;
         pumpStations.push({
-          distance: accumulatedDist,
-          elevation: currentElev,
+          distance: stationDistance,
+          elevation: elevationAtDistance(profileSamples, stationDistance),
           pressureBeforePump: currentPressure + totalDrop, // pressure right before drop or at threshold
-          pumpIndex: pumpIndex++,
+          pumpIndex: currentPumpIndex,
         });
         // Reset pressure to the configured pump output and expose the jump in the profile.
         currentPressure = pumpConfig.maxOutputPressure;
@@ -129,6 +135,7 @@ export function calculateWaterRelay(
     segmentDetails,
     profileSamples,
     pressureProfile,
+    pumpPositions,
   };
 }
 
@@ -174,4 +181,19 @@ function buildProfileSamples(waypoints: Waypoint[]) {
 
 function stepEffDistRatio(stepMapDist: number, layingFactor: number): number {
   return stepMapDist * layingFactor;
+}
+
+function elevationAtDistance(samples: { distance: number; elevation: number }[], distance: number): number {
+  if (samples.length === 0) return 0;
+  for (let index = 1; index < samples.length; index++) {
+    const previous = samples[index - 1];
+    const current = samples[index];
+    if (distance <= current.distance) {
+      const ratio = current.distance > previous.distance
+        ? (distance - previous.distance) / (current.distance - previous.distance)
+        : 0;
+      return previous.elevation + (current.elevation - previous.elevation) * ratio;
+    }
+  }
+  return samples[samples.length - 1].elevation;
 }

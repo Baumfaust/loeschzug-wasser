@@ -25,7 +25,17 @@ export async function fetchElevationForCoordinates(
   if (locations.length === 0) return [];
 
   try {
-    // Open-Elevation API accepts POST with JSON payload
+    // EU-DEM is a higher-resolution European DEM than the global fallback.
+    const locationsQuery = locations.map((loc) => `${loc.lat},${loc.lng}`).join('|');
+    const demResponse = await fetch(`https://api.opentopodata.org/v1/eudem?locations=${encodeURIComponent(locationsQuery)}`);
+    if (demResponse.ok) {
+      const data = await demResponse.json() as { results?: Array<{ elevation?: number | null }> };
+      if (data.results?.length === locations.length && data.results.every((result) => Number.isFinite(result.elevation))) {
+        return data.results.map((result) => result.elevation as number);
+      }
+    }
+
+    // Open-Elevation API accepts POST with JSON payload as a fallback.
     const response = await fetch('https://api.open-elevation.com/api/v1/lookup', {
       method: 'POST',
       headers: {
@@ -46,7 +56,7 @@ export async function fetchElevationForCoordinates(
       return data.results.map((res: { elevation: number }) => res.elevation);
     }
   } catch (err) {
-    console.warn('Failed to fetch elevation from Open-Elevation API, falling back to 0m', err);
+    console.warn('Failed to fetch elevation from EU-DEM/Open-Elevation, falling back to 0m', err);
   }
 
   // Fallback to 0m if API fails

@@ -25,9 +25,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     setFollowRoads,
     showHydrants,
     setShowHydrants,
+    pumpPositions,
   } = useWaterStore();
 
-  const getShareUrl = () => createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants });
+  const getShareUrl = () => createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, pumpPositions });
   const copyShareUrl = async () => {
     await navigator.clipboard.writeText(getShareUrl());
     setCopyState('copied');
@@ -36,7 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const showQrCode = async () => {
     setQrError(null);
     try {
-      const compactShareUrl = createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants }, true);
+      const compactShareUrl = createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, pumpPositions }, true);
       setQrCode(await QRCode.toDataURL(compactShareUrl, {
         width: 280,
         margin: 2,

@@ -8,11 +8,13 @@ interface WaterStore {
   
   followRoads: boolean;
   showHydrants: boolean;
+  pumpPositions: Record<number, number>;
 
   // Actions
   setFollowRoads: (followRoads: boolean) => void;
   setShowHydrants: (showHydrants: boolean) => void;
-  loadSharedState: (state: Pick<WaterStore, 'waypoints' | 'hoseConfig' | 'pumpConfig' | 'followRoads' | 'showHydrants'>) => void;
+  setPumpPosition: (pumpIndex: number, distance: number) => void;
+  loadSharedState: (state: Omit<Pick<WaterStore, 'waypoints' | 'hoseConfig' | 'pumpConfig' | 'followRoads' | 'showHydrants' | 'pumpPositions'>, 'pumpPositions'> & { pumpPositions?: Record<number, number> }) => void;
   addWaypoint: (lat: number, lng: number, elevation?: number, route?: { followsRoads: boolean; routeDistance?: number; routePath?: [number, number][]; routeSamples?: Waypoint['routeSamples'] }) => void;
   updateWaypointElevation: (id: string, elevation: number) => void;
   updateWaypointRoute: (id: string, route: { routeDistance: number; routePath: [number, number][]; routeSamples: Waypoint['routeSamples'] }) => void;
@@ -42,12 +44,16 @@ export const useWaterStore = create<WaterStore>((set) => ({
   waypoints: [],
   followRoads: true,
   showHydrants: false,
+  pumpPositions: {},
   hoseConfig: defaultHoseConfig,
   pumpConfig: defaultPumpConfig,
 
   setFollowRoads: (followRoads) => set({ followRoads }),
   setShowHydrants: (showHydrants) => set({ showHydrants }),
-  loadSharedState: (sharedState) => set(sharedState),
+  setPumpPosition: (pumpIndex, distance) => set((state) => ({
+    pumpPositions: { ...state.pumpPositions, [pumpIndex]: distance },
+  })),
+  loadSharedState: (sharedState) => set({ ...sharedState, pumpPositions: sharedState.pumpPositions ?? {} }),
 
   addWaypoint: (lat, lng, elevation = 0, route) =>
     set((state) => ({

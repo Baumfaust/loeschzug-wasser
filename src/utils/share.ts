@@ -9,6 +9,7 @@ export interface ShareState {
   pumpConfig: PumpConfig;
   followRoads: boolean;
   showHydrants: boolean;
+  pumpPositions?: Record<number, number>;
 }
 
 export function createSharePayload(state: ShareState, compact = false): string {
@@ -34,6 +35,7 @@ export function parseSharePayload(encoded: string): ShareState | null {
       pumpConfig: value.pumpConfig,
       followRoads: value.followRoads ?? true,
       showHydrants: value.showHydrants ?? false,
+      ...(value.pumpPositions ? { pumpPositions: value.pumpPositions } : {}),
     };
   } catch {
     return null;

@@ -8,7 +8,7 @@ import { ResultsPanel } from './components/Dashboard/ResultsPanel';
 import { ElevationChart } from './components/Dashboard/ElevationChart';
 
 export function App() {
-  const { waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, loadSharedState } = useWaterStore();
+  const { waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, pumpPositions, loadSharedState } = useWaterStore();
   const [hoveredDistance, setHoveredDistance] = useState<number | null>(null);
   const hasLoadedShareState = useRef(false);
 
@@ -20,11 +20,11 @@ export function App() {
 
   useEffect(() => {
     if (!hasLoadedShareState.current) return;
-    window.history.replaceState(null, '', createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants }));
-  }, [waypoints, hoseConfig, pumpConfig, followRoads, showHydrants]);
+    window.history.replaceState(null, '', createShareUrl({ waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, pumpPositions }));
+  }, [waypoints, hoseConfig, pumpConfig, followRoads, showHydrants, pumpPositions]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const calculationResult = calculateWaterRelay(waypoints, hoseConfig, pumpConfig);
+  const calculationResult = calculateWaterRelay(waypoints, hoseConfig, pumpConfig, pumpPositions);
 
   return (
     <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-950 font-sans">

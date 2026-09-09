@@ -113,7 +113,7 @@ const WaypointViewController: React.FC<{ waypoints: { lat: number; lng: number }
 };
 
 export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHoverDistance }) => {
-  const { waypoints, addWaypoint, updateWaypointElevation, updateWaypointRoute, removeWaypoint, followRoads, showHydrants } = useWaterStore();
+  const { waypoints, addWaypoint, updateWaypointElevation, updateWaypointRoute, removeWaypoint, setPumpPosition, followRoads, showHydrants } = useWaterStore();
   const [hydrants, setHydrants] = React.useState<Hydrant[]>([]);
   const waypointKey = waypoints.map((waypoint) => `${waypoint.lat},${waypoint.lng}`).join('|');
   const visibleHydrants = showHydrants && waypoints.length > 0 ? hydrants : [];
@@ -254,11 +254,24 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
           const coord = getCoord(waypoints, pump.distance);
           if (!coord) return null;
           return (
-            <Marker key={`pump-${pump.pumpIndex}`} position={[coord.lat, coord.lng]} icon={pumpIcon}>
+            <Marker
+              key={`pump-${pump.pumpIndex}`}
+              position={[coord.lat, coord.lng]}
+              icon={pumpIcon}
+              draggable
+              eventHandlers={{
+                dragend: (event) => {
+                  const marker = event.target as L.Marker;
+                  const snapped = nearestDistanceOnRoute(waypoints, marker.getLatLng().lat, marker.getLatLng().lng);
+                  if (snapped !== null) setPumpPosition(pump.pumpIndex, snapped);
+                },
+              }}
+            >
               <Popup>
                 <div className="text-slate-900 text-xs space-y-1 p-1">
                   <div className="font-bold text-amber-600">⚡ Pumpe #{pump.pumpIndex}</div>
                   <div>Distanz: {Math.round(pump.distance)}m | Höhe: {Math.round(pump.elevation)}m</div>
+                  <div className="text-slate-500">Ziehen, um die Pumpe auf der Strecke zu verschieben.</div>
                 </div>
               </Popup>
             </Marker>
@@ -288,6 +301,38 @@ function getCoord(waypoints: { lat: number; lng: number; routeDistance?: number;
   }
   const last = waypoints[waypoints.length - 1];
   return { lat: last.lat, lng: last.lng };
+}
+
+function nearestDistanceOnRoute(waypoints: { lat: number; lng: number; routeDistance?: number; routePath?: [number, number][] }[], lat: number, lng: number): number | null {
+  if (waypoints.length < 2) return null;
+  let accumulated = 0;
+  let bestDistance = Infinity;
+  let bestRouteDistance = 0;
+  for (let index = 0; index < waypoints.length - 1; index++) {
+    const start = waypoints[index];
+    const end = waypoints[index + 1];
+    const path = end.routePath ?? [[start.lat, start.lng], [end.lat, end.lng]];
+    const segmentDistance = end.routeDistance ?? pathDistance(path);
+    let pathDistanceSoFar = 0;
+    for (let pointIndex = 1; pointIndex < path.length; pointIndex++) {
+      const a = path[pointIndex - 1];
+      const b = path[pointIndex];
+      const dx = b[1] - a[1];
+      const dy = b[0] - a[0];
+      const denominator = dx * dx + dy * dy;
+      const ratio = denominator > 0 ? Math.max(0, Math.min(1, ((lng - a[1]) * dx + (lat - a[0]) * dy) / denominator)) : 0;
+      const closestLat = a[0] + (b[0] - a[0]) * ratio;
+      const closestLng = a[1] + (b[1] - a[1]) * ratio;
+      const distanceToPoint = hav(lat, lng, closestLat, closestLng);
+      if (distanceToPoint < bestDistance) {
+        bestDistance = distanceToPoint;
+        bestRouteDistance = accumulated + (pathDistanceSoFar + hav(a[0], a[1], closestLat, closestLng)) * (segmentDistance / Math.max(pathDistance(path), 1));
+      }
+      pathDistanceSoFar += hav(a[0], a[1], b[0], b[1]);
+    }
+    accumulated += segmentDistance;
+  }
+  return bestRouteDistance;
 }
 
 function pathDistance(path: [number, number][]) {
