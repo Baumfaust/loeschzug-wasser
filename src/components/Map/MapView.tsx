@@ -113,7 +113,7 @@ const WaypointViewController: React.FC<{ waypoints: { lat: number; lng: number }
 };
 
 export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHoverDistance }) => {
-  const { waypoints, addWaypoint, updateWaypointElevation, updateWaypointRoute, removeWaypoint, setPumpPosition, followRoads, showHydrants } = useWaterStore();
+  const { waypoints, addWaypoint, updateWaypointElevation, updateWaypointRoute, removeWaypoint, setPumpPosition, setPumpProfileForPump, pumpConfig, pumpProfiles, followRoads, showHydrants } = useWaterStore();
   const [hydrants, setHydrants] = React.useState<Hydrant[]>([]);
   const waypointKey = waypoints.map((waypoint) => `${waypoint.lat},${waypoint.lng}`).join('|');
   const visibleHydrants = showHydrants && waypoints.length > 0 ? hydrants : [];
@@ -240,11 +240,15 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
         {visibleHydrants.map((hydrant) => (
           <Marker key={`hydrant-${hydrant.id}`} position={[hydrant.lat, hydrant.lng]} icon={hydrantIcon}>
             <Popup>
-              <div className="text-slate-900 text-xs space-y-1 p-1">
+              <div className="text-slate-900 text-xs space-y-1 p-1 min-w-44">
                 <div className="font-bold text-red-600">🚒 Hydrant</div>
                 <div>Entfernung zum Wegpunkt: {Math.round(hydrant.distanceToWaypoint)} m</div>
-                {hydrant.tags?.['fire_hydrant:type'] && <div>Typ: {hydrant.tags['fire_hydrant:type']}</div>}
-                {hydrant.tags?.['fire_hydrant:position'] && <div>Position: {hydrant.tags['fire_hydrant:position']}</div>}
+                <div>Rohrdurchmesser: {hydrant.tags?.['fire_hydrant:diameter'] ?? hydrant.tags?.diameter ?? 'nicht angegeben'}</div>
+                <div>Anschluss: {hydrant.tags?.['fire_hydrant:connection_type'] ?? hydrant.tags?.couplings ?? 'nicht angegeben'}</div>
+                <div>Bauart: {hydrant.tags?.['fire_hydrant:type'] ?? 'nicht angegeben'}</div>
+                <div>Position: {hydrant.tags?.['fire_hydrant:position'] ?? 'nicht angegeben'}</div>
+                <div>Betreiber: {hydrant.tags?.operator ?? 'nicht angegeben'}</div>
+                <div className="text-[10px] text-slate-500">OSM-ID: {hydrant.id}</div>
               </div>
             </Popup>
           </Marker>
@@ -269,8 +273,20 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
             >
               <Popup>
                 <div className="text-slate-900 text-xs space-y-1 p-1">
-                  <div className="font-bold text-amber-600">⚡ Pumpe #{pump.pumpIndex}</div>
-                  <div>Distanz: {Math.round(pump.distance)}m | Höhe: {Math.round(pump.elevation)}m</div>
+                  <div className="font-bold text-amber-600">⚡ Relaispumpe #{pump.pumpIndex}</div>
+                  <div>Distanz: {Math.round(pump.distance)} m | Höhe: {Math.round(pump.elevation)} m</div>
+                  <label className="block font-medium">Pumpenmodell
+                    <select
+                      value={pumpProfiles[pump.pumpIndex] ?? pumpConfig.profile}
+                      onChange={(event) => setPumpProfileForPump(pump.pumpIndex, event.target.value as import('../../types/water').PumpProfileType)}
+                      onMouseDown={(event) => event.stopPropagation()}
+                      className="mt-1 w-full rounded border border-slate-300 bg-white px-1 py-1"
+                    >
+                      <option value="pfpn-10-1000">PFPN 10-1000 (10 bar / 1.000 l/min)</option>
+                      <option value="ts-8-8">TS 8/8 (8 bar / 800 l/min)</option>
+                      <option value="custom">Benutzerdefiniert</option>
+                    </select>
+                  </label>
                   <div className="text-slate-500">Ziehen, um die Pumpe auf der Strecke zu verschieben.</div>
                 </div>
               </Popup>

@@ -1,4 +1,4 @@
-import { type Waypoint, type HoseConfig, type PumpConfig, type CalculationResult, type PumpStation, type PressureProfileSample } from '../types/water';
+import { type Waypoint, type HoseConfig, type PumpConfig, type PumpProfileType, type CalculationResult, type PumpStation, type PressureProfileSample } from '../types/water';
 import { calculateDistance } from './elevation';
 import { ELEVATION_SAMPLE_INTERVAL_METERS } from './route';
 
@@ -7,6 +7,7 @@ export function calculateWaterRelay(
   hoseConfig: HoseConfig,
   pumpConfig: PumpConfig,
   pumpPositions: Record<number, number> = {},
+  pumpProfiles: Record<number, PumpProfileType> = {},
 ): CalculationResult {
   if (waypoints.length < 2) {
     return {
@@ -101,10 +102,11 @@ export function calculateWaterRelay(
 
       // A manually positioned pump takes priority over automatic threshold placement.
       const currentPumpIndex = pumpIndex;
+      const currentPumpConfig = getPumpConfig(pumpConfig, pumpProfiles[currentPumpIndex]);
       const requestedDistance = pumpPositions[currentPumpIndex];
       const hasManualPosition = Number.isFinite(requestedDistance);
       const manualPositionReached = hasManualPosition && accumulatedDist >= requestedDistance;
-      const automaticPositionReached = !hasManualPosition && currentPressure <= pumpConfig.minInputPressure;
+      const automaticPositionReached = !hasManualPosition && currentPressure <= currentPumpConfig.minInputPressure;
       if ((manualPositionReached || automaticPositionReached) && sampleIndex < profileSamples.length - 1) {
         const stationDistance = hasManualPosition
           ? Math.max(1, Math.min(mapDistance - 1, requestedDistance))
@@ -116,8 +118,8 @@ export function calculateWaterRelay(
           pressureBeforePump: currentPressure + totalDrop, // pressure right before drop or at threshold
           pumpIndex: currentPumpIndex,
         });
-        // Reset pressure to the configured pump output and expose the jump in the profile.
-        currentPressure = pumpConfig.maxOutputPressure;
+        // Reset pressure to the selected pump model's output.
+        currentPressure = currentPumpConfig.maxOutputPressure;
         pressureProfile.push({
           distance: accumulatedDist,
           pressure: currentPressure,
@@ -188,6 +190,12 @@ function addPumpDistances(samples: { distance: number; elevation: number }[], di
   const additions = distances.filter((distance) => !samples.some((sample) => Math.abs(sample.distance - distance) < 0.01));
   return [...samples, ...additions.map((distance) => ({ distance, elevation: elevationAtDistance(samples, distance) }))]
     .sort((a, b) => a.distance - b.distance);
+}
+
+function getPumpConfig(globalConfig: PumpConfig, profile?: PumpProfileType): PumpConfig {
+  if (profile === 'pfpn-10-1000') return { ...globalConfig, profile, targetFlowRate: 1000, maxOutputPressure: 10, minInputPressure: 1.5 };
+  if (profile === 'ts-8-8') return { ...globalConfig, profile, targetFlowRate: 800, maxOutputPressure: 8, minInputPressure: 1.5 };
+  return globalConfig;
 }
 
 function stepEffDistRatio(stepMapDist: number, layingFactor: number): number {

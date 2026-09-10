@@ -72,4 +72,5 @@ export interface CalculationResult {
   profileSamples: { distance: number; elevation: number }[];
   pressureProfile: PressureProfileSample[];
   pumpPositions?: Record<number, number>;
+  pumpProfiles?: Record<number, PumpProfileType>;
 }

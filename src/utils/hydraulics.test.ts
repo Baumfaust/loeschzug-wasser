@@ -119,6 +119,23 @@ describe('calculateWaterRelay: pressure components', () => {
   });
 });
 
+  it('uses the selected model output pressure for an individual relay pump', () => {
+    const result = calculateWaterRelay(
+      [point('start'), routedEnd(100, 1000, undefined)],
+      hose(1, 1),
+      pumpConfig,
+      {},
+      { 1: 'ts-8-8' },
+    );
+
+    expect(result.pressureProfile).toContainEqual(expect.objectContaining({
+      distance: expect.any(Number),
+      pressure: 8,
+      pumpReset: true,
+    }));
+  });
+
+
 describe('calculateWaterRelay: hose and pump behavior', () => {
   it('rounds hose count upward after applying laying factor', () => {
     const result = resultFor(routedEnd(100, 20.01, undefined), point('start'), hose(1, 1));

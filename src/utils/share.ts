@@ -10,6 +10,7 @@ export interface ShareState {
   followRoads: boolean;
   showHydrants: boolean;
   pumpPositions?: Record<number, number>;
+  pumpProfiles?: Record<number, import('../types/water').PumpProfileType>;
 }
 
 export function createSharePayload(state: ShareState, compact = false): string {
@@ -45,6 +46,7 @@ export function parseSharePayload(encoded: string): ShareState | null {
       followRoads: value.followRoads ?? true,
       showHydrants: value.showHydrants ?? false,
       ...(value.pumpPositions ? { pumpPositions: value.pumpPositions } : {}),
+      ...(value.pumpProfiles ? { pumpProfiles: value.pumpProfiles } : {}),
     };
   } catch {
     return null;

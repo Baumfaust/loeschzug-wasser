@@ -9,12 +9,14 @@ interface WaterStore {
   followRoads: boolean;
   showHydrants: boolean;
   pumpPositions: Record<number, number>;
+  pumpProfiles: Record<number, PumpProfileType>;
 
   // Actions
   setFollowRoads: (followRoads: boolean) => void;
   setShowHydrants: (showHydrants: boolean) => void;
   setPumpPosition: (pumpIndex: number, distance: number) => void;
-  loadSharedState: (state: Omit<Pick<WaterStore, 'waypoints' | 'hoseConfig' | 'pumpConfig' | 'followRoads' | 'showHydrants' | 'pumpPositions'>, 'pumpPositions'> & { pumpPositions?: Record<number, number> }) => void;
+  setPumpProfileForPump: (pumpIndex: number, profile: PumpProfileType) => void;
+  loadSharedState: (state: Omit<Pick<WaterStore, 'waypoints' | 'hoseConfig' | 'pumpConfig' | 'followRoads' | 'showHydrants' | 'pumpPositions' | 'pumpProfiles'>, 'pumpPositions' | 'pumpProfiles'> & { pumpPositions?: Record<number, number>; pumpProfiles?: Record<number, PumpProfileType> }) => void;
   addWaypoint: (lat: number, lng: number, elevation?: number, route?: { followsRoads: boolean; routeDistance?: number; routePath?: [number, number][]; routeSamples?: Waypoint['routeSamples'] }) => void;
   updateWaypointElevation: (id: string, elevation: number) => void;
   updateWaypointRoute: (id: string, route: { routeDistance: number; routePath: [number, number][]; routeSamples: Waypoint['routeSamples'] }) => void;
@@ -45,6 +47,7 @@ export const useWaterStore = create<WaterStore>((set) => ({
   followRoads: true,
   showHydrants: false,
   pumpPositions: {},
+  pumpProfiles: {},
   hoseConfig: defaultHoseConfig,
   pumpConfig: defaultPumpConfig,
 
@@ -53,7 +56,14 @@ export const useWaterStore = create<WaterStore>((set) => ({
   setPumpPosition: (pumpIndex, distance) => set((state) => ({
     pumpPositions: { ...state.pumpPositions, [pumpIndex]: distance },
   })),
-  loadSharedState: (sharedState) => set({ ...sharedState, pumpPositions: sharedState.pumpPositions ?? {} }),
+  setPumpProfileForPump: (pumpIndex, profile) => set((state) => ({
+    pumpProfiles: { ...state.pumpProfiles, [pumpIndex]: profile },
+  })),
+  loadSharedState: (sharedState) => set({
+    ...sharedState,
+    pumpPositions: sharedState.pumpPositions ?? {},
+    pumpProfiles: sharedState.pumpProfiles ?? {},
+  }),
 
   addWaypoint: (lat, lng, elevation = 0, route) =>
     set((state) => ({
