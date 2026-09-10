@@ -9,6 +9,7 @@ import { geocodeLocation } from '../../utils/geocode';
 import { ELEVATION_SAMPLE_INTERVAL_METERS, routeBetweenPoints, sampleStraightLine } from '../../utils/route';
 import { calculateDistance } from '../../utils/elevation';
 import { findNearbyHydrants } from '../../utils/osm';
+import { shouldAutoFocusWaypoints } from './waypointViewport';
 
 const debugConfigModules = import.meta.glob('../../debug-config.local.ts', {
   eager: true,
@@ -93,10 +94,18 @@ const DebugLocationInitializer: React.FC = () => {
 
 const WaypointViewController: React.FC<{ waypoints: { lat: number; lng: number }[] }> = ({ waypoints }) => {
   const map = useMap();
-  const waypointKey = waypoints.map((waypoint) => `${waypoint.lat},${waypoint.lng}`).join('|');
+  const previousWaypointCountRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
-    if (waypoints.length === 0) return;
+    if (waypoints.length === 0) {
+      previousWaypointCountRef.current = 0;
+      return;
+    }
+
+    const shouldFocus = shouldAutoFocusWaypoints(previousWaypointCountRef.current, waypoints.length);
+    previousWaypointCountRef.current = waypoints.length;
+
+    if (!shouldFocus) return;
 
     if (waypoints.length === 1) {
       map.setView([waypoints[0].lat, waypoints[0].lng], 13);
@@ -107,7 +116,7 @@ const WaypointViewController: React.FC<{ waypoints: { lat: number; lng: number }
       waypoints.map((waypoint) => [waypoint.lat, waypoint.lng] as [number, number]),
       { padding: [40, 40], maxZoom: 15 },
     );
-  }, [map, waypointKey, waypoints]);
+  }, [map, waypoints]);
 
   return null;
 };
