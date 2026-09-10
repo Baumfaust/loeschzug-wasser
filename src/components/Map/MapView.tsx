@@ -246,22 +246,34 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
           );
         })}
 
-        {visibleHydrants.map((hydrant) => (
-          <Marker key={`hydrant-${hydrant.id}`} position={[hydrant.lat, hydrant.lng]} icon={hydrantIcon}>
-            <Popup>
-              <div className="text-slate-900 text-xs space-y-1 p-1 min-w-44">
-                <div className="font-bold text-red-600">🚒 Hydrant</div>
-                <div>Entfernung zum Wegpunkt: {Math.round(hydrant.distanceToWaypoint)} m</div>
-                <div>Rohrdurchmesser: {hydrant.tags?.['fire_hydrant:diameter'] ?? hydrant.tags?.diameter ?? 'nicht angegeben'}</div>
-                <div>Anschluss: {hydrant.tags?.['fire_hydrant:connection_type'] ?? hydrant.tags?.couplings ?? 'nicht angegeben'}</div>
-                <div>Bauart: {hydrant.tags?.['fire_hydrant:type'] ?? 'nicht angegeben'}</div>
-                <div>Position: {hydrant.tags?.['fire_hydrant:position'] ?? 'nicht angegeben'}</div>
-                <div>Betreiber: {hydrant.tags?.operator ?? 'nicht angegeben'}</div>
-                <div className="text-[10px] text-slate-500">OSM-ID: {hydrant.id}</div>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        {visibleHydrants.map((hydrant) => {
+          const hydratedInfo = getHydrantInfo(hydrant);
+          return (
+            <Marker key={`hydrant-${hydrant.id}`} position={[hydrant.lat, hydrant.lng]} icon={hydrantIcon}>
+              <Popup>
+                <div className="min-w-36 space-y-1 p-1 text-[11px] text-slate-900">
+                  <div className="font-bold text-red-600">🚒 Hydrant</div>
+                  <div>Entfernung: {Math.round(hydrant.distanceToWaypoint)} m</div>
+                  {hydratedInfo.map((info) => (
+                    <div key={info.label}>
+                      <span className="font-medium text-slate-700">{info.label}:</span> {info.value}
+                    </div>
+                  ))}
+                  {hydrant.id && (
+                    <a
+                      href={`https://www.openstreetmap.org/node/${hydrant.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block text-cyan-700 underline"
+                    >
+                      OpenStreetMap öffnen
+                    </a>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
 
         {result.pumpStations.map((pump) => {
           const coord = getCoord(waypoints, pump.distance);
@@ -309,6 +321,31 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
 
 function chunk<T>(items: T[], size: number): T[][] {
   return Array.from({ length: Math.ceil(items.length / size) }, (_, index) => items.slice(index * size, (index + 1) * size));
+}
+
+function getHydrantInfo(hydrant: Hydrant): { label: string; value: string }[] {
+  const entries: Array<{ label: string; value: string }> = [];
+  const diameter = hydrant.tags?.['fire_hydrant:diameter'] ?? hydrant.tags?.diameter;
+  const type = hydrant.tags?.['fire_hydrant:type'];
+  const position = hydrant.tags?.['fire_hydrant:position'];
+
+  if (diameter) entries.push({ label: 'Rohrdurchmesser', value: diameter });
+  if (type) entries.push({ label: 'Bauart', value: type });
+  if (position) entries.push({ label: 'Position', value: translateHydrantPosition(position) });
+
+  return entries;
+}
+
+function translateHydrantPosition(value: string): string {
+  const translations: Record<string, string> = {
+    lane: 'Fahrbahn',
+    sidewalk: 'Gehweg',
+    parking_lot: 'Parkplatz',
+    yard: 'Hof',
+    ground: 'Boden',
+    kerbside: 'Bordstein',
+  };
+  return translations[value.toLowerCase()] ?? value;
 }
 
 function getCoord(waypoints: { lat: number; lng: number; routeDistance?: number; routePath?: [number, number][] }[], target: number) {
