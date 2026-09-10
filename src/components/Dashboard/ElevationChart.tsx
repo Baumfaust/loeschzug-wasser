@@ -8,6 +8,17 @@ interface ElevationChartProps {
   onHoverDistance: (distance: number | null) => void;
 }
 
+export function getPressureChartConfig(pressureValues: number[], minimumPumpInputPressure = 1.5) {
+  const pressureMin = 0;
+  const pressureMax = Math.ceil(Math.max(0, ...pressureValues, minimumPumpInputPressure) + 1);
+  return {
+    pressureMin,
+    pressureMax,
+    pressureRange: Math.max(pressureMax - pressureMin, 2),
+    minimumPumpInputPressure,
+  };
+}
+
 export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredDistance, onHoverDistance }) => {
   if (result.segmentDetails.length === 0) return null;
 
@@ -30,14 +41,13 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
   const totalDist = result.mapDistance || 1;
   const pressureSamples = result.pressureProfile;
   const pressureValues = pressureSamples.map((sample) => sample.pressure);
-  const pressureMin = Math.floor(Math.min(0, ...pressureValues) - 1);
-  const pressureMax = Math.ceil(Math.max(0, ...pressureValues) + 1);
-  const pressureRange = Math.max(pressureMax - pressureMin, 2);
   const width = 760;
   const height = 190;
   const padding = { top: 22, right: 20, bottom: 30, left: 42 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
+  const { pressureMin, pressureMax, pressureRange, minimumPumpInputPressure } = getPressureChartConfig(pressureValues);
+  const minimumInputPressureY = padding.top + (1 - (minimumPumpInputPressure - pressureMin) / pressureRange) * chartHeight;
   const points = chartSamples.slice(1).map((sample, index) => {
     const previous = chartSamples[index];
     const x1 = padding.left + (previous.distance / totalDist) * chartWidth;
@@ -91,7 +101,8 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
             </linearGradient>
           </defs>
           <path d={areaPath} fill="url(#elevationGradient)" />
-          <line x1={padding.left} y1={padding.top + (1 - (0 - pressureMin) / pressureRange) * chartHeight} x2={width - padding.right} y2={padding.top + (1 - (0 - pressureMin) / pressureRange) * chartHeight} stroke="#fbbf24" strokeOpacity="0.2" strokeDasharray="2 4" />
+          <line x1={padding.left} y1={minimumInputPressureY} x2={width - padding.right} y2={minimumInputPressureY} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4 4" />
+          <text x={width - padding.right + 6} y={minimumInputPressureY - 4} textAnchor="start" fill="#ef4444" fontSize="9" fontWeight="bold">Minderdruck</text>
           <path d={profilePath} fill="none" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           {pressurePath && <path d={pressurePath} fill="none" stroke="#fbbf24" strokeWidth="2.5" strokeDasharray="6 3" strokeLinecap="round" strokeLinejoin="round" />}
           {pressurePumpPoints.map((point, index) => (
