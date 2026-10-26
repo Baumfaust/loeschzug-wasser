@@ -14,11 +14,11 @@ export interface ShareState {
 }
 
 export function createSharePayload(state: ShareState, compact = false): string {
-  // QR codes omit dense elevation samples, but must retain the routed geometry.
+  // QR codes omit dense elevation samples and their metadata (reloaded on open), but must retain the routed geometry.
   const shareState = compact
     ? {
         ...state,
-        waypoints: state.waypoints.map(({ routeSamples: _routeSamples, routePath, ...waypoint }) => ({
+        waypoints: state.waypoints.map(({ routeSamples: _routeSamples, elevationSource: _elevationSource, elevationStatus: _elevationStatus, routePath, ...waypoint }) => ({
            ...waypoint,
            ...(routePath ? { routePath: compactPath(routePath) } : {}),
          })),

@@ -19,6 +19,7 @@ interface WaterStore {
   loadSharedState: (state: Omit<Pick<WaterStore, 'waypoints' | 'hoseConfig' | 'pumpConfig' | 'followRoads' | 'showHydrants' | 'pumpPositions' | 'pumpProfiles'>, 'pumpPositions' | 'pumpProfiles'> & { pumpPositions?: Record<number, number>; pumpProfiles?: Record<number, PumpProfileType> }) => void;
   addWaypoint: (lat: number, lng: number, elevation?: number, route?: { followsRoads: boolean; routeDistance?: number; routePath?: [number, number][]; routeSamples?: Waypoint['routeSamples'] }) => void;
   updateWaypointElevation: (id: string, elevation: number) => void;
+  setWaypointElevationData: (id: string, data: Pick<Waypoint, 'elevationStatus'> & Partial<Pick<Waypoint, 'elevation' | 'elevationSource' | 'routeSamples' | 'routeDistance'>>) => void;
   updateWaypointRoute: (id: string, route: { routeDistance: number; routePath: [number, number][]; routeSamples: Waypoint['routeSamples'] }) => void;
   removeWaypoint: (id: string) => void;
   clearWaypoints: () => void;
@@ -84,6 +85,16 @@ export const useWaterStore = create<WaterStore>((set) => ({
       waypoints: state.waypoints.map((wp) =>
         wp.id === id ? { ...wp, elevation, manualElevationOverride: true } : wp
       ),
+    })),
+
+  // Automatically fetched data never sets manualElevationOverride, and never replaces a manual value.
+  setWaypointElevationData: (id, data) =>
+    set((state) => ({
+      waypoints: state.waypoints.map((wp) => {
+        if (wp.id !== id) return wp;
+        const { elevation, ...rest } = data;
+        return { ...wp, ...rest, ...(elevation !== undefined && !wp.manualElevationOverride ? { elevation } : {}) };
+      }),
     })),
 
   updateWaypointRoute: (id, route) =>

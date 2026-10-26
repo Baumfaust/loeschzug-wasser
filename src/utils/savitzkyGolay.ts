@@ -11,16 +11,20 @@ const WINDOW_SIZE = 5;
  * The fit uses the actual distance values rather than assuming evenly spaced
  * samples. This is important because route samples can contain waypoints and
  * manually positioned pump samples at irregular distances.
+ *
+ * With `windowMeters`, the window covers all samples within ±windowMeters/2 of each sample
+ * instead of a fixed sample count, so it can follow the resolution of the elevation data.
  */
-export function smoothElevationProfile(samples: ElevationSample[]): ElevationSample[] {
+export function smoothElevationProfile(samples: ElevationSample[], options: { windowMeters?: number } = {}): ElevationSample[] {
   if (samples.length < 3) return samples.map((sample) => ({ ...sample }));
 
   return samples.map((sample, index) => {
     if (index === 0 || index === samples.length - 1) return { ...sample };
 
-    const start = Math.max(0, index - Math.floor(WINDOW_SIZE / 2));
-    const end = Math.min(samples.length, start + WINDOW_SIZE);
-    const window = samples.slice(Math.max(0, end - WINDOW_SIZE), end);
+    const window = options.windowMeters === undefined
+      ? fixedWindow(samples, index)
+      : distanceWindow(samples, index, options.windowMeters / 2);
+    if (window.length < 3) return { ...sample };
     const smoothedElevation = quadraticFitAtCenter(window, sample.distance);
 
     if (!Number.isFinite(smoothedElevation)) return { ...sample };
@@ -32,6 +36,22 @@ export function smoothElevationProfile(samples: ElevationSample[]): ElevationSam
       elevation: Math.max(localMin, Math.min(localMax, smoothedElevation)),
     };
   });
+}
+
+function fixedWindow(samples: ElevationSample[], index: number): ElevationSample[] {
+  const start = Math.max(0, index - Math.floor(WINDOW_SIZE / 2));
+  const end = Math.min(samples.length, start + WINDOW_SIZE);
+  return samples.slice(Math.max(0, end - WINDOW_SIZE), end);
+}
+
+// Samples are ordered by distance, so the window can be grown outwards from the centre.
+function distanceWindow(samples: ElevationSample[], index: number, halfWidth: number): ElevationSample[] {
+  const center = samples[index].distance;
+  let start = index;
+  let end = index;
+  while (start > 0 && center - samples[start - 1].distance <= halfWidth) start--;
+  while (end < samples.length - 1 && samples[end + 1].distance - center <= halfWidth) end++;
+  return samples.slice(start, end + 1);
 }
 
 function quadraticFitAtCenter(samples: ElevationSample[], centerDistance: number): number {
