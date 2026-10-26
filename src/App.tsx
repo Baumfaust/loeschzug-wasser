@@ -32,20 +32,20 @@ export function App() {
   const calculationResult = calculateWaterRelay(waypoints, hoseConfig, pumpConfig, pumpPositions, pumpProfiles);
 
   return (
-    <div className="flex h-[100dvh] w-screen overflow-hidden bg-slate-950 font-sans">
+    <div className="flex h-[100dvh] w-screen overflow-hidden bg-page font-sans">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <main className="relative flex-1 flex h-full min-w-0 w-full">
         <MapView result={calculationResult} hoveredDistance={hoveredDistance} onHoverDistance={setHoveredDistance} />
         <button
           type="button"
           onClick={() => setIsSidebarOpen(true)}
-          className="absolute left-3 top-3 z-[1100] rounded-xl border border-slate-600 bg-slate-900/95 px-3 py-2 text-sm font-semibold text-white shadow-xl backdrop-blur-md md:hidden"
+          className="absolute left-3 top-3 z-[1100] rounded-xl border border-line bg-surface/95 px-3 py-2 text-sm font-semibold text-fg shadow-xl backdrop-blur-md md:hidden"
           aria-label="Menü öffnen"
         >
           ☰ Menü
         </button>
         <ResultsPanel result={calculationResult} />
-        <ElevationChart result={calculationResult} hoveredDistance={hoveredDistance} onHoverDistance={setHoveredDistance} onRetryElevation={() => void loadMissingElevations()} />
+        <ElevationChart result={calculationResult} hoveredDistance={hoveredDistance} onHoverDistance={setHoveredDistance} onRetryElevation={() => void loadMissingElevations()} minimumInputPressure={pumpConfig.minInputPressure} />
       </main>
     </div>
   );
