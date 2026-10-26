@@ -137,5 +137,11 @@ npm run preview   # Build lokal prüfen: http://localhost:4173/loeschzug-wasser/
 
 ## Lizenz
 
-Dieses Projekt ist für den internen und experimentellen Einsatz im jeweiligen Repository- oder Teamkontext vorgesehen. Für die genutzten Daten gelten die Lizenzen der jeweiligen Quellen (siehe oben).
+Copyright © 2026 Baumfaust
+
+Licensed under the EUPL. Der Quellcode steht unter der [European Union Public Licence v. 1.2](LICENSE) (EUPL-1.2). Die EUPL ist in allen Amtssprachen der EU gleichermaßen gültig, auch auf [Deutsch](https://eur-lex.europa.eu/legal-content/DE/TXT/?uri=CELEX:32017D0863).
+
+Die Software wird ohne Gewährleistung bereitgestellt (Art. 7 und 8 EUPL). Sie ersetzt keine Prüfung vor Ort (siehe [Hinweise](#hinweise)).
+
+Für die genutzten Karten-, Routen- und Höhendaten gelten die Lizenzen der jeweiligen Quellen (siehe [Datenquellen](#datenquellen)).
 
