@@ -125,6 +125,8 @@ npm run build
 npm run preview   # Build lokal prüfen: http://localhost:4173/loeschzug-wasser/
 ```
 
+Geplante Erweiterungen und ihre Priorität stehen in der [Roadmap](ROADMAP.md).
+
 Änderungen werden über Pull Requests in `main` übernommen. Jeder Push auf `main` veröffentlicht die Anwendung automatisch auf GitHub Pages.
 
 ## Datenquellen

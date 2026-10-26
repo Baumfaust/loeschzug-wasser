@@ -107,14 +107,14 @@ const WaypointViewController: React.FC<{ waypoints: { lat: number; lng: number }
 
     if (!shouldFocus) return;
 
-    // A clicked first waypoint is always inside the view, so the map stays where the user put it.
-    const bounds = map.getBounds();
-    if (waypoints.every((waypoint) => bounds.contains([waypoint.lat, waypoint.lng]))) return;
-
     if (waypoints.length === 1) {
+      // A clicked first waypoint is always inside the view, so the map stays where the user put it.
+      if (map.getBounds().contains([waypoints[0].lat, waypoints[0].lng])) return;
       map.setView([waypoints[0].lat, waypoints[0].lng], Math.max(map.getZoom(), 13));
       return;
     }
+
+    // A whole route appeared at once (shared link, reload): fit it even if it is technically in view but tiny.
 
     map.fitBounds(
       waypoints.map((waypoint) => [waypoint.lat, waypoint.lng] as [number, number]),
