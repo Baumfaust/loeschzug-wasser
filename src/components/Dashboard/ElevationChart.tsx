@@ -1,11 +1,11 @@
 import React from 'react';
 import { type CalculationResult } from '../../types/water';
-import { smoothElevationProfile } from '../../utils/savitzkyGolay';
 
 interface ElevationChartProps {
   result: CalculationResult;
   hoveredDistance: number | null;
   onHoverDistance: (distance: number | null) => void;
+  onRetryElevation: () => void;
 }
 
 export function getPressureChartConfig(pressureValues: number[], minimumPumpInputPressure = 1.5) {
@@ -19,7 +19,7 @@ export function getPressureChartConfig(pressureValues: number[], minimumPumpInpu
   };
 }
 
-export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredDistance, onHoverDistance }) => {
+export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredDistance, onHoverDistance, onRetryElevation }) => {
   if (result.segmentDetails.length === 0) return null;
 
   const profileSamples = result.profileSamples.length > 0
@@ -28,7 +28,9 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
         { distance: index === 0 ? 0 : result.segmentDetails[index - 1].accumulatedDistance, elevation: segment.elevationStart },
         { distance: segment.accumulatedDistance, elevation: segment.elevationEnd },
       ]);
-  const chartSamples = smoothElevationProfile(profileSamples);
+  // Already smoothed in calculateWaterRelay, so the chart matches the pump calculation.
+  const chartSamples = profileSamples;
+  const { status: elevationStatus, sources: elevationSources } = result.elevationInfo;
   const elevations = chartSamples.map((sample) => sample.elevation);
   const actualMin = Math.min(...elevations);
   const actualMax = Math.max(...elevations);
@@ -82,6 +84,16 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
         </span>
       </div>
 
+      {elevationStatus === 'error' && (
+        <div className="mb-2 flex items-center justify-between gap-2 rounded-lg border border-red-500/60 bg-red-950/60 px-2 py-1 text-[11px] text-red-200">
+          <span>⚠ Höhendaten fehlen – Ergebnis unzuverlässig</span>
+          <button type="button" onClick={onRetryElevation} className="rounded-md border border-red-400/60 px-2 py-0.5 font-semibold hover:bg-red-900">Neu laden</button>
+        </div>
+      )}
+      {elevationStatus === 'pending' && (
+        <div className="mb-2 rounded-lg border border-slate-600 bg-slate-800/70 px-2 py-1 text-[11px] text-slate-300">Höhendaten werden geladen…</div>
+      )}
+
       <div className="mb-1 flex flex-wrap gap-3 text-[10px] text-slate-400">
         <span className="text-cyan-300">━ Höhe</span>
         <span className="text-amber-300">╌ Druck (Reibung + Höhe)</span>
@@ -123,9 +135,18 @@ export const ElevationChart: React.FC<ElevationChartProps> = ({ result, hoveredD
           ))}
         </svg>
       </div>
+      {elevationSources.length > 0 && (
+        <div className="mt-1 text-[9px] leading-tight text-slate-500">
+          Höhendaten: {elevationSources.map((source) => `${source.label} (~${formatResolution(source.resolutionMeters)})${source.attribution ? `, ${source.attribution}` : ''}`).join(' · ')}
+        </div>
+      )}
     </div>
   );
 };
+
+function formatResolution(meters: number): string {
+  return meters < 10 ? `${Math.max(1, Math.round(meters))} m` : `${Math.round(meters / 5) * 5} m`;
+}
 
 
 function createSmoothPath(points: { x: number; y: number }[]) {

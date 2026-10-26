@@ -51,3 +51,23 @@ describe('smoothElevationProfile', () => {
     expect(result.every((sample, index) => sample.elevation <= Math.max(...terrain.slice(Math.max(0, index - 2), index + 3).map((point) => point.elevation)))).toBe(true);
   });
 });
+
+describe('smoothElevationProfile with a window in metres', () => {
+  const stairs = Array.from({ length: 41 }, (_, index) => ({
+    distance: index * 5,
+    elevation: 100 + Math.floor(index / 6) * 1,
+  }));
+
+  it('keeps samples unchanged when the window holds fewer than three samples', () => {
+    expect(smoothElevationProfile(stairs, { windowMeters: 8 })).toEqual(stairs);
+  });
+
+  it('flattens grid steps more with a wider window', () => {
+    const roughness = (samples: { elevation: number }[]) =>
+      samples.slice(1).reduce((max, sample, index) => Math.max(max, Math.abs(sample.elevation - samples[index].elevation)), 0);
+    const narrow = smoothElevationProfile(stairs, { windowMeters: 20 });
+    const wide = smoothElevationProfile(stairs, { windowMeters: 90 });
+    expect(roughness(wide)).toBeLessThan(roughness(narrow));
+    expect(roughness(narrow)).toBeLessThanOrEqual(roughness(stairs));
+  });
+});

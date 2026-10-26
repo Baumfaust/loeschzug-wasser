@@ -32,6 +32,20 @@ export function sampleStraightLine(
   });
 }
 
+/** Rebuilds the elevation sample points of a segment from its stored geometry. */
+export function sampleSegment(
+  start: { lat: number; lng: number },
+  end: { lat: number; lng: number; routeDistance?: number; routePath?: [number, number][] },
+): { distance: number; samples: RouteSamplePoint[] } {
+  if (end.routePath && end.routePath.length >= 2 && end.routeDistance) {
+    return { distance: end.routeDistance, samples: samplePath(end.routePath, end.routeDistance) };
+  }
+  return {
+    distance: calculateDistance(start.lat, start.lng, end.lat, end.lng),
+    samples: sampleStraightLine(start, end),
+  };
+}
+
 export async function routeBetweenPoints(
   start: { lat: number; lng: number },
   end: { lat: number; lng: number },
@@ -64,7 +78,7 @@ export async function routeBetweenPoints(
   };
 }
 
-function samplePath(path: [number, number][], routeDistance: number, interval: number): RouteSamplePoint[] {
+export function samplePath(path: [number, number][], routeDistance: number, interval = ELEVATION_SAMPLE_INTERVAL_METERS): RouteSamplePoint[] {
   if (path.length < 2) return path.map(([lat, lng]) => ({ distance: 0, lat, lng }));
 
   const lengths = path.slice(1).map((point, index) => calculateDistance(path[index][0], path[index][1], point[0], point[1]));

@@ -3,10 +3,10 @@ import { MapContainer, TileLayer, Polyline, Marker, Popup, CircleMarker, useMap,
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useWaterStore } from '../../store/useWaterStore';
-import { type CalculationResult, type Hydrant, type RouteSample } from '../../types/water';
-import { fetchElevationForCoordinates } from '../../utils/elevation';
+import { type CalculationResult, type Hydrant } from '../../types/water';
 import { geocodeLocation } from '../../utils/geocode';
-import { ELEVATION_SAMPLE_INTERVAL_METERS, routeBetweenPoints, sampleStraightLine } from '../../utils/route';
+import { routeBetweenPoints } from '../../utils/route';
+import { loadSegmentElevation } from '../../utils/segmentElevation';
 import { calculateDistance } from '../../utils/elevation';
 import { findNearbyHydrants } from '../../utils/osm';
 import { shouldAutoFocusWaypoints } from './waypointViewport';
@@ -107,8 +107,12 @@ const WaypointViewController: React.FC<{ waypoints: { lat: number; lng: number }
 
     if (!shouldFocus) return;
 
+    // A clicked first waypoint is always inside the view, so the map stays where the user put it.
+    const bounds = map.getBounds();
+    if (waypoints.every((waypoint) => bounds.contains([waypoint.lat, waypoint.lng]))) return;
+
     if (waypoints.length === 1) {
-      map.setView([waypoints[0].lat, waypoints[0].lng], 13);
+      map.setView([waypoints[0].lat, waypoints[0].lng], Math.max(map.getZoom(), 13));
       return;
     }
 
@@ -122,7 +126,7 @@ const WaypointViewController: React.FC<{ waypoints: { lat: number; lng: number }
 };
 
 export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHoverDistance }) => {
-  const { waypoints, addWaypoint, updateWaypointElevation, updateWaypointRoute, removeWaypoint, setPumpPosition, setPumpProfileForPump, pumpConfig, pumpProfiles, followRoads, showHydrants } = useWaterStore();
+  const { waypoints, addWaypoint, removeWaypoint, setPumpPosition, setPumpProfileForPump, pumpConfig, pumpProfiles, followRoads, showHydrants } = useWaterStore();
   const [hydrants, setHydrants] = React.useState<Hydrant[]>([]);
   const waypointKey = waypoints.map((waypoint) => `${waypoint.lat},${waypoint.lng}`).join('|');
   const visibleHydrants = showHydrants && waypoints.length > 0 ? hydrants : [];
@@ -147,40 +151,19 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
       ? await routeBetweenPoints(previousWaypoint, { lat, lng })
       : null;
     const straightDistance = previousWaypoint ? calculateDistance(previousWaypoint.lat, previousWaypoint.lng, lat, lng) : 0;
-    const samples = previousWaypoint
-      ? route?.samples ?? sampleStraightLine(previousWaypoint, { lat, lng }, ELEVATION_SAMPLE_INTERVAL_METERS)
-      : undefined;
 
     addWaypoint(lat, lng, 0, {
       followsRoads: shouldFollowRoads,
-      routeDistance: route?.distance,
-      routePath: route?.path,
-      routeSamples: samples?.map((sample) => ({ ...sample, elevation: 0 })),
+      ...(previousWaypoint
+        ? {
+            routeDistance: route?.distance ?? straightDistance,
+            routePath: route?.path ?? [[previousWaypoint.lat, previousWaypoint.lng], [lat, lng]],
+          }
+        : {}),
     });
 
     const latestId = useWaterStore.getState().waypoints.slice(-1)[0]?.id;
-    if (!latestId) return;
-
-    const locations = samples ?? [{ distance: 0, lat, lng }];
-    const elevations = (await Promise.all(
-      chunk(locations, 100).map((batch) => fetchElevationForCoordinates(batch)),
-    )).flat();
-    if (elevations.length === 0) return;
-
-    if (samples) {
-      const routeSamples: RouteSample[] = samples.map((sample, index) => ({
-        ...sample,
-        elevation: elevations[index] ?? 0,
-      }));
-      updateWaypointRoute(latestId, {
-        routeDistance: route?.distance ?? straightDistance,
-        routePath: route?.path ?? [[previousWaypoint!.lat, previousWaypoint!.lng], [lat, lng]],
-        routeSamples,
-      });
-      updateWaypointElevation(latestId, elevations[elevations.length - 1] ?? 0);
-    } else {
-      updateWaypointElevation(latestId, elevations[0]);
-    }
+    if (latestId) await loadSegmentElevation(latestId);
   };
 
   const center: [number, number] = waypoints.length > 0 ? [waypoints[0].lat, waypoints[0].lng] : [51.1657, 10.4515];
@@ -231,7 +214,7 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
               <Popup>
                 <div className="text-slate-900 text-xs space-y-1 p-1">
                   <div className="font-bold">{i === 0 ? '🟢 Start' : i === waypoints.length - 1 ? '🔴 Ziel' : `📍 Punkt #${i + 1}`}</div>
-                  <div>Höhe: {Math.round(wp.elevation)}m</div>
+                  <div>Höhe: {wp.elevationStatus === 'pending' ? 'wird geladen…' : wp.elevationStatus === 'error' ? 'nicht verfügbar' : `${Math.round(wp.elevation)}m`}</div>
                   <button
                     onClick={(event) => {
                       event.stopPropagation();
@@ -318,10 +301,6 @@ export const MapView: React.FC<MapViewProps> = ({ result, hoveredDistance, onHov
     </div>
   );
 };
-
-function chunk<T>(items: T[], size: number): T[][] {
-  return Array.from({ length: Math.ceil(items.length / size) }, (_, index) => items.slice(index * size, (index + 1) * size));
-}
 
 function getHydrantInfo(hydrant: Hydrant): { label: string; value: string }[] {
   const entries: Array<{ label: string; value: string }> = [];

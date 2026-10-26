@@ -1,6 +1,10 @@
-import { type Waypoint, type HoseConfig, type PumpConfig, type PumpProfileType, type CalculationResult, type PumpStation, type PressureProfileSample } from '../types/water';
+import { type Waypoint, type HoseConfig, type PumpConfig, type PumpProfileType, type CalculationResult, type PumpStation, type PressureProfileSample, type ElevationSourceInfo } from '../types/water';
 import { calculateDistance } from './elevation';
 import { ELEVATION_SAMPLE_INTERVAL_METERS } from './route';
+import { smoothElevationProfile } from './savitzkyGolay';
+
+// Assumed for samples without a known source (e.g. stored before sources were tracked).
+const UNKNOWN_SOURCE_RESOLUTION_METERS = 30;
 
 export function calculateWaterRelay(
   waypoints: Waypoint[],
@@ -21,6 +25,7 @@ export function calculateWaterRelay(
       segmentDetails: [],
       profileSamples: [],
       pressureProfile: [],
+      elevationInfo: summarizeElevation(waypoints),
     };
   }
 
@@ -142,6 +147,7 @@ export function calculateWaterRelay(
     segmentDetails,
     profileSamples,
     pressureProfile,
+    elevationInfo: summarizeElevation(waypoints),
     pumpPositions,
   };
 }
@@ -164,7 +170,11 @@ function buildProfileSamples(waypoints: Waypoint[]) {
       : undefined;
 
     if (routeSamples?.length) {
-      for (const sample of routeSamples) {
+      // Smooth once here, so the chart shows exactly the profile the pump placement uses.
+      const smoothed = smoothElevationProfile(routeSamples, {
+        windowMeters: smoothingWindowMeters(end.elevationSource?.resolutionMeters ?? UNKNOWN_SOURCE_RESOLUTION_METERS),
+      });
+      for (const sample of smoothed) {
         if (samples.length > 0 && sample.distance === 0) continue;
         samples.push({ distance: accumulated + sample.distance, elevation: sample.elevation });
       }
@@ -184,6 +194,22 @@ function buildProfileSamples(waypoints: Waypoint[]) {
   }
 
   return samples;
+}
+
+/** Window wide enough to remove grid steps of the data, narrow enough to keep dikes and embankments. */
+export function smoothingWindowMeters(resolutionMeters: number): number {
+  return Math.max(20, resolutionMeters * 3);
+}
+
+function summarizeElevation(waypoints: Waypoint[]): CalculationResult['elevationInfo'] {
+  const statuses = waypoints.map((waypoint) => waypoint.elevationStatus);
+  const status = statuses.includes('error') ? 'error' : statuses.includes('pending') ? 'pending' : 'ok';
+  const sources = new Map<string, ElevationSourceInfo>();
+  for (const waypoint of waypoints) {
+    const source = waypoint.elevationSource;
+    if (source) sources.set(`${source.id}|${source.label}`, source);
+  }
+  return { status, sources: [...sources.values()] };
 }
 
 function addPumpDistances(samples: { distance: number; elevation: number }[], distances: number[]) {

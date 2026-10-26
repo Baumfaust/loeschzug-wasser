@@ -5,6 +5,15 @@ export interface RouteSample {
   elevation: number;
 }
 
+export interface ElevationSourceInfo {
+  id: string;
+  label: string;
+  resolutionMeters: number;
+  attribution?: string;
+}
+
+export type ElevationStatus = 'pending' | 'ok' | 'error';
+
 export interface Hydrant {
   id: string;
   lat: number;
@@ -23,6 +32,8 @@ export interface Waypoint {
   routeDistance?: number;
   routePath?: [number, number][];
   routeSamples?: RouteSample[];
+  elevationStatus?: ElevationStatus;
+  elevationSource?: ElevationSourceInfo;
 }
 
 export interface HoseConfig {
@@ -71,6 +82,10 @@ export interface CalculationResult {
   }[];
   profileSamples: { distance: number; elevation: number }[];
   pressureProfile: PressureProfileSample[];
+  elevationInfo: {
+    status: ElevationStatus;
+    sources: ElevationSourceInfo[];
+  };
   pumpPositions?: Record<number, number>;
   pumpProfiles?: Record<number, PumpProfileType>;
 }

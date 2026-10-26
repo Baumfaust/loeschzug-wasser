@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useWaterStore } from './store/useWaterStore';
 import { readShareState, createShareUrl } from './utils/share';
 import { calculateWaterRelay } from './utils/hydraulics';
+import { loadMissingElevations } from './utils/segmentElevation';
 import { Sidebar } from './components/Sidebar/Sidebar';
 import { MapView } from './components/Map/MapView';
 import { ResultsPanel } from './components/Dashboard/ResultsPanel';
@@ -14,7 +15,11 @@ export function App() {
 
   useEffect(() => {
     const sharedState = readShareState();
-    if (sharedState) loadSharedState(sharedState);
+    if (sharedState) {
+      loadSharedState(sharedState);
+      // Compact links omit the dense elevation samples, so rebuild them from the route geometry.
+      void loadMissingElevations();
+    }
     hasLoadedShareState.current = true;
   }, [loadSharedState]);
 
@@ -40,7 +45,7 @@ export function App() {
           ☰ Menü
         </button>
         <ResultsPanel result={calculationResult} />
-        <ElevationChart result={calculationResult} hoveredDistance={hoveredDistance} onHoverDistance={setHoveredDistance} />
+        <ElevationChart result={calculationResult} hoveredDistance={hoveredDistance} onHoverDistance={setHoveredDistance} onRetryElevation={() => void loadMissingElevations()} />
       </main>
     </div>
   );
