@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>loeschzug-wasser</title>
+    <script>
+      // Apply the stored theme before the first paint (see src/utils/theme.ts).
+      (function () {
+        var preference = 'auto';
+        try { preference = localStorage.getItem('loeschzug-wasser:theme') || 'auto'; } catch (e) {}
+        var dark = preference === 'dark' || (preference !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
